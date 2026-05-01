@@ -18,140 +18,123 @@
     storageBucket: "gls-app-bb278.firebasestorage.app",
     messagingSenderId: "44948425794",
     appId: "1:44948425794:web:5dd07431b80653937f31db"
-};
+  };
 
-// Initialisation (Vérifie bien que ces imports sont en haut de ton fichier)
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-let currentUserId = null;
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
 
-// --- CONNEXION ---
-// --- FORCE L'ACCÈS GLOBAL ---
-window.login = async function() {
-    alert("Bouton cliqué !"); // Diagnostic 1 : Si ça n'affiche rien, le problème est le HTML
+  let currentUserId = null;
 
+// --- GESTION DE LA CONNEXION ---
+  window.login = async function() {
     const email = prompt("Email :");
     const password = prompt("Mot de passe :");
-    
-    if (!email || !password) {
-        alert("Champs vides");
-        return;
-    }
-
     try {
-        alert("ÉTAPE 1 : Appel Firebase lancé..."); 
-        
-        // On nettoie l'email des espaces et majuscules auto du mobile
-        const cleanEmail = email.trim().toLowerCase();
-        
-        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
-        const user = userCredential.user;
-
-        alert("ÉTAPE 2 : Authentifié ! ID : " + user.uid); 
-
-        currentUserId = user.uid;
-        localStorage.setItem('savedUserId', user.uid);
-        
-        const dot = document.getElementById('status-dot');
-        const authBtnText = document.querySelector('#auth-ui-container button');
-        if(dot) dot.style.backgroundColor = "#22c55e";
-        if(authBtnText) authBtnText.innerHTML = "✅ " + user.email;
-
-        alert("ÉTAPE 3 : Lancement de la récupération Cloud...");
-        await window.loadFromCloud(true);
-
+      await signInWithEmailAndPassword(auth, email, password);
+      // On ne met pas d'alert ici car l'écouteur onAuthStateChanged 
+      // s'occupera d'afficher le message et de charger les données.
     } catch (error) {
-        // C'EST ICI QUE LE MOBILE VA NOUS DIRE LE PROBLÈME
-        alert("🚨 ERREUR DÉTECTÉE :\nCode : " + error.code + "\nMessage : " + error.message);
-        console.error("Erreur complète:", error);
+      alert("Erreur : " + error.message);
     }
-};
+  };
 
-// --- DÉCONNEXION ---
-window.logout = async function() {
-    if (confirm("Voulez-vous vous déconnecter ?")) {
-        try {
-            await signOut(auth);
-            localStorage.clear();
-            sessionStorage.clear();
-            alert("Déconnecté !");
-            location.reload();
-        } catch (error) {
-            alert("Erreur déconnexion : " + error.message);
-        }
+  window.logout = async function() {
+    if (confirm("Voulez-vous vous déconnecter ? Les données locales seront effacées par sécurité.")) {
+      try {
+        await signOut(auth);
+        // On vide le stockage local (Propre & Sécurisé)
+        localStorage.clear(); 
+        // On recharge pour remettre l'interface à zéro
+        location.reload(); 
+      } catch (error) {
+        console.error("Erreur déconnexion:", error);
+      }
     }
-};
+  };
 
-// --- CHARGEMENT ---
-window.loadFromCloud = async function() {
-    if (!currentUserId) {
-        alert("Action impossible : Vous n'êtes pas connecté !");
-        return;
-    }
-    
-    alert("Début de la récupération...");
-
-    try {
-        const docRef = doc(db, "users", currentUserId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            alert("Données reçues du serveur !");
-
-            // Transfert vers le téléphone
-            if(data.suivi) localStorage.setItem('fitAppDataV7', data.suivi);
-            if(data.sport) localStorage.setItem('fitTrainingDataV2', data.sport);
-            
-            alert("Stockage mis à jour. Rafraîchissement...");
-            
-            // On force l'affichage
-            if (typeof displayData === "function") displayData();
-            if (typeof displayTrainings === "function") displayTrainings();
-            
-            // Si l'affichage ne bouge toujours pas, on tente le reload final
-            // location.reload();
-        } else {
-            alert("Le document n'existe pas sur Firebase.");
-        }
-    } catch (e) {
-        alert("ERREUR FATALE : " + e.message);
-        console.error(e);
-    }
-};
-// --- SAUVEGARDE ---
-window.saveToCloud = async function() {
-    if (!currentUserId) return;
-    const data = {
-        suivi: localStorage.getItem('fitAppDataV7'),
-        sport: localStorage.getItem('fitTrainingDataV2'),
-        history: localStorage.getItem('fitProgressionHistoryV1'),
-        lastUpdate: new Date().toISOString()
-    };
-    try {
-        await setDoc(doc(db, "users", currentUserId), data);
-    } catch (e) {
-        console.error(e);
-    }
-};
-
-// --- ÉCOUTEUR D'ÉTAT ---
+// À ajouter dans ton écouteur Firebase (onAuthStateChanged) :
+// ÉCOUTEUR D'ÉTAT (Automatique)
 onAuthStateChanged(auth, async (user) => {
     const dot = document.getElementById('status-dot');
     const authBtnText = document.querySelector('#auth-ui-container button');
 
     if (user) {
         currentUserId = user.uid;
-        if(dot) dot.style.backgroundColor = "#22c55e";
-        if(authBtnText) authBtnText.innerHTML = "✅ " + user.email;
-        await window.loadFromCloud(true);
+        if(dot) dot.style.backgroundColor = "#22c55e"; 
+        if(authBtnText) authBtnText.innerHTML = "✅ Connecté (" + user.email + ")";
+        
+        console.log("Utilisateur connecté, récupération des données...");
+        
+        // --- SYNCHRONISATION AUTOMATIQUE ENTRANTE ---
+        await window.loadFromCloud(true); // 'true' pour dire que c'est le chargement auto
     } else {
         currentUserId = null;
         if(dot) dot.style.backgroundColor = "#ef4444";
         if(authBtnText) authBtnText.innerHTML = "🚀 Connexion Client";
     }
 });
+
+  
+
+  // --- CHARGEMENT ---
+  // CHARGEMENT AUTOMATIQUE OU MANUEL
+// CHARGEMENT AUTOMATIQUE OU MANUEL
+window.loadFromCloud = async function(isAuto = false) {
+    if (!currentUserId) return;
+    
+    try {
+        const docSnap = await getDoc(doc(db, "users", currentUserId));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            // On récupère les anciennes valeurs pour comparer
+            const oldSport = localStorage.getItem('fitTrainingDataV2');
+
+            // Mise à jour du stockage local
+            if(data.suivi) localStorage.setItem('fitAppDataV7', data.suivi);
+            if(data.sport) localStorage.setItem('fitTrainingDataV2', data.sport);
+            if(data.history) localStorage.setItem('fitProgressionHistoryV1', data.history);
+            
+            console.log("✅ Données récupérées du Cloud");
+
+            // SI LE LOCAL ÉTAIT VIDE (cas du vidage de cache), on force le rechargement de la page
+            if (!oldSport && data.sport) {
+                console.log("Premier chargement détecté : Rafraîchissement...");
+                location.reload(); 
+                return;
+            }
+
+            // Sinon, on met juste à jour l'affichage sans recharger la page
+            if (typeof displayData === "function") displayData();
+            if (typeof displayTrainings === "function") displayTrainings();
+            
+        } else {
+            console.log("☁️ Aucun document trouvé pour cet utilisateur sur le Cloud.");
+        }
+    } catch (e) {
+        console.error("Erreur Cloud Sync:", e);
+    }
+};
+
+// SAUVEGARDE AUTOMATIQUE (Silence)
+window.saveToCloud = async function() {
+    if (!currentUserId) return;
+    
+    const data = {
+        suivi: localStorage.getItem('fitAppDataV7'),
+        sport: localStorage.getItem('fitTrainingDataV2'),
+        history: localStorage.getItem('fitProgressionHistoryV1'),
+        lastUpdate: new Date().toISOString()
+    };
+    
+    try {
+        await setDoc(doc(db, "users", currentUserId), data);
+        console.log("☁️ Cloud Sync OK (Auto)");
+    } catch (e) {
+        console.error("Erreur Sync Cloud:", e);
+    }
+};
 </script>
     <title>GLS Track Pro - Coach Edition</title>
     <style>
@@ -190,15 +173,12 @@ onAuthStateChanged(auth, async (user) => {
         <h3 class="text-center font-black uppercase text-[12px] text-gray-800 mb-8 tracking-widest">Espace Client Cloud</h3>
         
         <div id="auth-ui-container" class="space-y-4">
-            <button onclick="window.login()" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+            <button onclick="login()" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-indigo-100 active:scale-95 transition-all">
                 🚀 Connexion Client
             </button>
-            <button onclick="window.logout()" class="w-full bg-red-50 text-red-500 py-5 rounded-2xl font-black text-[11px] uppercase active:scale-95 transition-all border border-red-100">
+            <button onclick="logout()" class="w-full bg-red-50 text-red-500 py-5 rounded-2xl font-black text-[11px] uppercase active:scale-95 transition-all border border-red-100">
                 Déconnexion
             </button>
-			<button onclick="window.loadFromCloud()" style="background:orange; color:white; padding:10px;">
-   🔄 Forcer Synchro Cloud
-</button>
         </div>
         
         <button onclick="toggleAuthModal()" class="w-full mt-6 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Fermer la fenêtre</button>
@@ -517,31 +497,28 @@ function toggleAuthModal() {
 
     if (entry.poids === 0) return alert("Poids requis !");
 
-    // FORCE l'utilisation de la clé officielle
-    const KEY = 'fitAppDataV7';
-    let storage = JSON.parse(localStorage.getItem(KEY)) || { journal: {}, mesures: {} };
-    
+    let storage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
     if (!storage.journal[m]) storage.journal[m] = [];
     storage.journal[m].push(entry);
 
     // 1. Sauvegarde locale
-    localStorage.setItem(KEY, JSON.stringify(storage));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
 
-    // 2. Synchronisation Cloud Automatique
-    if (window.saveToCloud) {
-        window.saveToCloud();
-        console.log("☁️ Synchro Cloud envoyée après ajout poids");
-    }
+    // 2. Synchronisation Cloud Automatique (Firebase)
+    setTimeout(() => {
+        if (window.saveToCloud) {
+            window.saveToCloud();
+        }
+    }, 500);
 
-    // Réinitialisation interface
+    // Réinitialisation de l'interface
     document.querySelectorAll('#suivi input:not(#heure), #suivi textarea').forEach(i => i.value = '');
-    alert("✅ Enregistré & Synchronisé !");
     displayData();
 }
 
         function displayData() {
-			const m = document.getElementById('month-selector').value;
-			const storage = JSON.parse(localStorage.getItem('fitAppDataV7')) || { journal: {}, mesures: {} };
+            const m = document.getElementById('month-selector').value;
+            const storage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
             const entries = (storage.journal && storage.journal[m]) || [];
             document.getElementById('day-counter').innerText = entries.length + 1;
             if (entries.length > 0) {
@@ -1138,46 +1115,50 @@ function addExoManual(tIdx) {
         try {
             const d = JSON.parse(ev.target.result);
             
-            // ÉTAPE 1 : On vide d'abord le localStorage pour partir sur du propre
-            localStorage.removeItem('fitAppDataV7');
-            localStorage.removeItem('fitTrainingDataV2');
-            localStorage.removeItem('fitProgressionHistoryV1');
-
             let importedSomething = false;
 
-            // ÉTAPE 2 : On traite le SUIVI (Journal/Mensurations)
+            // 1. IMPORT DU SUIVI (MENSU / JOURNAL)
+            // Note : On utilise directement la clé 'fitAppDataV7'
             if (d.suivi) {
-                // On s'assure que c'est bien stocké en texte (le format attendu par ton app)
-                const val = (typeof d.suivi === 'object') ? JSON.stringify(d.suivi) : d.suivi;
-                localStorage.setItem('fitAppDataV7', val);
+                // On récupère la valeur. Si c'est un objet, on le transforme en texte.
+                const suiviValeur = typeof d.suivi === 'string' ? d.suivi : JSON.stringify(d.suivi);
+                localStorage.setItem('fitAppDataV7', suiviValeur);
                 importedSomething = true;
+                console.log("✅ Suivi importé");
             }
 
-            // ÉTAPE 3 : On traite le SPORT
+            // 2. IMPORT DU SPORT
             if (d.sport) {
-                const val = (typeof d.sport === 'object') ? JSON.stringify(d.sport) : d.sport;
-                localStorage.setItem('fitTrainingDataV2', val);
+                const sportValeur = typeof d.sport === 'string' ? d.sport : JSON.stringify(d.sport);
+                localStorage.setItem('fitTrainingDataV2', sportValeur);
                 importedSomething = true;
+                console.log("✅ Sport importé");
+            }
+
+            // 3. IMPORT DE L'HISTORIQUE
+            if (d.history) {
+                const historyValeur = typeof d.history === 'string' ? d.history : JSON.stringify(d.history);
+                localStorage.setItem('fitProgressionHistoryV1', historyValeur);
             }
 
             if (importedSomething) {
-                // ÉTAPE 4 : On force l'envoi vers Firebase AVANT de recharger
-                if (window.saveToCloud) {
-                    window.saveToCloud().then(() => {
-                        console.log("☁️ Firebase mis à jour avec les données officielles");
-                        alert("✅ Importation et Synchronisation Cloud réussies !");
-                        location.reload();
-                    }).catch(err => {
-                        console.error("Erreur Cloud:", err);
-                        alert("Données importées localement mais erreur de synchro Cloud.");
-                        location.reload();
-                    });
-                }
+                // On laisse 500ms pour être sûr que le localStorage est écrit
+                setTimeout(() => {
+                    // On envoie tout de suite vers Firebase
+                    if (window.saveToCloud) {
+                        window.saveToCloud();
+                        console.log("☁️ Synchronisation Cloud après import réussie");
+                    }
+                    alert("✅ Importation réussie et synchronisée sur le Cloud !");
+                    location.reload();
+                }, 500);
             } else {
-                alert("⚠️ Format de fichier non reconnu.");
+                alert("⚠️ Aucune donnée reconnue dans le fichier.");
             }
+            
         } catch (err) {
-            alert("Erreur lors de la lecture : " + err.message);
+            alert("Erreur de lecture du fichier JSON !");
+            console.error(err);
         }
     };
     r.readAsText(f);
