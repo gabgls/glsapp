@@ -600,20 +600,15 @@ window.saveToCloud = async function() {
         } 
 		
 		async function editRow(index) {
-    // 1. Récupérer le mois actuellement affiché (on utilise une variable globale ou l'affichage actuel)
-    // Si tu n'as pas de variable 'currentMonth', on garde le mois en cours mais c'est risqué.
-    // Idéalement, utilise la variable que tu utilises pour ton affichage.
+    // On récupère le mois affiché (très important pour le client en Avril !)
     const m = typeof currentMonth !== 'undefined' ? currentMonth : new Date().getMonth();
     
     const s = JSON.parse(localStorage.getItem('fitAppDataV7'));
-    if (!s || !s.journal[m]) {
-        alert("Erreur : Impossible de trouver les données pour ce mois.");
-        return;
-    }
+    if (!s || !s.journal || !s.journal[m]) return;
 
     let dayData = s.journal[m][index];
 
-    // 2. Interface de saisie (Prompts)
+    // 1. Saisie des données
     const nPoids = prompt("Poids (kg) :", dayData.poids);
     if (nPoids === null) return; 
 
@@ -624,7 +619,7 @@ window.saveToCloud = async function() {
     const nDodo = prompt("Heures de sommeil :", dayData.sommeil);
     const nNote = prompt("Note / Commentaires :", dayData.coms);
 
-    // 3. Mise à jour propre des données
+    // 2. Traitement et conversion
     dayData.poids = nPoids !== "" ? parseFloat(nPoids.toString().replace(',', '.')) : dayData.poids;
     dayData.onoff = nType !== "" ? nType.toUpperCase() : dayData.onoff;
     dayData.heure = nHeure !== "" ? nHeure : dayData.heure;
@@ -633,25 +628,18 @@ window.saveToCloud = async function() {
     dayData.sommeil = nDodo !== "" ? parseFloat(nDodo.toString().replace(',', '.')) : dayData.sommeil;
     dayData.coms = nNote !== null ? nNote : dayData.coms;
 
-    // 4. Sauvegarde Locale
+    // 3. Sauvegarde locale
     s.journal[m][index] = dayData;
     localStorage.setItem('fitAppDataV7', JSON.stringify(s));
 
-    // 5. Sauvegarde Cloud (Firebase)
-    // On force la synchronisation immédiatement
+    // 4. Envoi au Cloud (Firebase)
     if (window.saveToCloud) {
-        console.log("☁️ Synchronisation des modifications...");
         await window.saveToCloud();
-    } else {
-        console.error("Fonction saveToCloud non trouvée");
     }
     
-    // 6. Mise à jour de l'affichage
-    if (typeof displayData === 'function') {
-        displayData();
-    }
-    
-    alert("✅ Ligne modifiée et synchronisée !");
+    // 5. Refresh visuel
+    displayData();
+    alert("✅ Ligne mise à jour !");
 }
 
 
