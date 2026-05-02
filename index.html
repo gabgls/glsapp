@@ -22,6 +22,9 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+	window.db = db;
+	window.doc = doc;
+	window.setDoc = setDoc;
   const auth = getAuth(app);
 
   let currentUserId = null;
@@ -1149,12 +1152,15 @@ function addExoManual(tIdx) {
         // --- BACKUP ---
         function exportData() { const name = prompt("Ton Nom :"); if(!name) return; const data = { client: name, suivi: localStorage.getItem(STORAGE_KEY), sport: localStorage.getItem(TRAINING_KEY) }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Fit_${name}.json`; a.click(); }
 		async function importData(e) {
-    // RÉCUPÉRATION GLOBALE : On cherche l'ID là où on l'a stocké
+    // 1. Récupération des outils et de l'ID via l'objet global window
     const userId = window.currentUserId;
+    const _setDoc = window.setDoc;
+    const _doc = window.doc;
+    const _db = window.db;
 
-    if (!userId) {
-        console.error("Tentative d'import sans userId défini.");
-        alert("⚠️ Erreur : Vous devez être connecté pour importer des données.");
+    if (!userId || !_setDoc) {
+        console.error("Firebase ou UserId non disponible sur window");
+        alert("⚠️ Erreur : Connexion Firebase non prête. Réessayez dans 2 secondes.");
         return;
     }
 
@@ -1175,12 +1181,12 @@ function addExoManual(tIdx) {
             const sportObj = parseIfNeeded(content.sport);
             const historyObj = parseIfNeeded(content.history);
 
-            // Mise à jour du stockage local
+            // Mise à jour locale
             if (suiviObj) localStorage.setItem('fitAppDataV7', JSON.stringify(suiviObj));
             if (sportObj) localStorage.setItem('fitTrainingDataV2', JSON.stringify(sportObj));
             if (historyObj) localStorage.setItem('fitProgressionHistoryV1', JSON.stringify(historyObj));
 
-            // Préparation de l'envoi Firebase
+            // Préparation Cloud
             const finalDoc = {
                 suivi: suiviObj,
                 sport: sportObj,
@@ -1188,17 +1194,17 @@ function addExoManual(tIdx) {
                 lastUpdate: new Date().toISOString()
             };
 
-            console.log("☁️ Synchronisation Cloud pour :", userId);
+            console.log("☁️ Synchronisation Cloud finale...");
             
-            // Envoi à Firestore
-            await setDoc(doc(db, "users", userId), finalDoc);
+            // 2. Envoi avec les références globales
+            await _setDoc(_doc(_db, "users", userId), finalDoc);
             
-            alert("✅ Migration réussie !");
+            alert("✅ Migration réussie ! Toutes les données sont sur le Cloud.");
             location.reload();
 
         } catch (err) {
             console.error("ERREUR IMPORT:", err);
-            alert("Erreur lors de l'importation.");
+            alert("Erreur lors de l'importation (voir console).");
         }
     };
     r.readAsText(f);
