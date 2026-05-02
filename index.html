@@ -575,28 +575,31 @@ window.saveToCloud = async function() {
                 document.getElementById('bilan-poids').innerHTML = `<span class="${diffP <= 0 ? 'text-green-400' : 'text-orange-400'}">${diffP > 0 ? '+' : ''}${diffP}kg</span>`;
                 document.getElementById('bilan-sport').innerText = entries.filter(e => e.onoff === "ON").length + " ON";
             } else { document.getElementById('bilan-coach').classList.add('hidden'); }
-           document.getElementById('tableau-corps').innerHTML = entries.map((e, i) => `
-    <tr class="border-b border-gray-800 active:bg-gray-800 cursor-pointer" 
-        title="${e.coms || 'Pas de note'}">
+           document.getElementById('tableau-corps').innerHTML = entries.map((e, i) => {
+    // On sécurise le commentaire pour éviter de casser le HTML
+    const safeComs = e.coms ? e.coms.replace(/'/g, "&apos;").replace(/"/g, "&quot;") : "";
+
+    return `
+    <tr class="border-b border-gray-800 active:bg-gray-800 cursor-pointer">
         <td class="p-3 text-indigo-400 font-bold">J${i+1}</td>
-        <td class="p-3 font-bold text-white">${e.poids}</td>
+        <td class="p-3 font-bold text-white">${e.poids || '-'}</td>
         <td class="p-3 text-center">
             ${e.onoff === "ON" ? '<span class="text-xs">💪</span>' : '<span class="text-xs opacity-30">😴</span>'}
         </td>
-        <td class="p-3 text-gray-500">${e.heure}</td>
-        <td class="p-3 text-orange-400 font-bold">${e.calories}</td>
-        <td class="p-3 text-green-400">${e.pas}</td>
-        <td class="p-3 text-blue-400">${e.sommeil}h</td>
-        <td class="p-3 text-center" onclick="if('${e.coms}') alert('Note J${i+1} : ${e.coms.replace(/'/g, "\\'")}')">
-            ${e.coms ? '<span class="text-indigo-400 animate-pulse">💬</span>' : '-'}
+        <td class="p-3 text-gray-500">${e.heure || '--:--'}</td>
+        <td class="p-3 text-orange-400 font-bold">${e.calories || '-'}</td>
+        <td class="p-3 text-green-400">${e.pas || '-'}</td>
+        <td class="p-3 text-blue-400">${e.sommeil || '-'}h</td>
+        <td class="p-3 text-center">
+            ${e.coms ? `<button onclick="alert('Note : ${safeComs}')" class="text-indigo-400 animate-pulse">💬</button>` : '-'}
         </td>
         <td class="p-3 text-center">
             <button onclick="editRow(${i})" class="bg-gray-700 hover:bg-indigo-600 text-[10px] text-white px-2 py-1 rounded transition-colors">
                 MODIF
             </button>
         </td>
-    </tr>
-`).join('');
+    </tr>`;
+}).join('');
         } 
 		
 		async function editRow(index) {
