@@ -1149,12 +1149,12 @@ function addExoManual(tIdx) {
         // --- BACKUP ---
         function exportData() { const name = prompt("Ton Nom :"); if(!name) return; const data = { client: name, suivi: localStorage.getItem(STORAGE_KEY), sport: localStorage.getItem(TRAINING_KEY) }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Fit_${name}.json`; a.click(); }
 		async function importData(e) {
-    // On récupère l'ID depuis l'objet global window pour être sûr qu'il est défini
-    const userId = window.currentUserId || currentUserId;
+    // RÉCUPÉRATION GLOBALE : On cherche l'ID là où on l'a stocké
+    const userId = window.currentUserId;
 
-    // VERIFICATION IMMEDIATE
     if (!userId) {
-        alert("Erreur : Vous devez être connecté pour importer des données sur le Cloud.");
+        console.error("Tentative d'import sans userId défini.");
+        alert("⚠️ Erreur : Vous devez être connecté pour importer des données.");
         return;
     }
 
@@ -1165,24 +1165,22 @@ function addExoManual(tIdx) {
     r.onload = async ev => {
         try {
             const content = JSON.parse(ev.target.result);
-            console.log("Fichier lu, préparation de la migration...");
             
-            const cleanData = (val) => {
+            const parseIfNeeded = (val) => {
                 if (!val) return null;
-                // Gère les données de suivi, sport et historique du JSON
                 return typeof val === 'string' ? JSON.parse(val) : val;
             };
 
-            const suiviObj = cleanData(content.suivi);
-            const sportObj = cleanData(content.sport);
-            const historyObj = cleanData(content.history);
+            const suiviObj = parseIfNeeded(content.suivi);
+            const sportObj = parseIfNeeded(content.sport);
+            const historyObj = parseIfNeeded(content.history);
 
-            // 1. Mise à jour locale (LocalStorage)
+            // Mise à jour du stockage local
             if (suiviObj) localStorage.setItem('fitAppDataV7', JSON.stringify(suiviObj));
             if (sportObj) localStorage.setItem('fitTrainingDataV2', JSON.stringify(sportObj));
             if (historyObj) localStorage.setItem('fitProgressionHistoryV1', JSON.stringify(historyObj));
 
-            // 2. Préparation du document pour Firestore
+            // Préparation de l'envoi Firebase
             const finalDoc = {
                 suivi: suiviObj,
                 sport: sportObj,
@@ -1190,19 +1188,17 @@ function addExoManual(tIdx) {
                 lastUpdate: new Date().toISOString()
             };
 
-            // 3. Envoi vers Firebase avec l'userId validé
-            console.log("☁️ Tentative d'envoi Cloud pour :", userId);
+            console.log("☁️ Synchronisation Cloud pour :", userId);
+            
+            // Envoi à Firestore
             await setDoc(doc(db, "users", userId), finalDoc);
-            console.log("☁️ Synchronisation Cloud réussie !");
             
-            alert("✅ Migration terminée et synchronisée !");
-            
-            // Rechargement pour afficher les nouvelles données (poids, séances, etc.)[cite: 1]
+            alert("✅ Migration réussie !");
             location.reload();
 
         } catch (err) {
             console.error("ERREUR IMPORT:", err);
-            alert("Erreur lors de l'importation. Vérifiez le format du fichier.");
+            alert("Erreur lors de l'importation.");
         }
     };
     r.readAsText(f);
