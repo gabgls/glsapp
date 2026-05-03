@@ -597,6 +597,9 @@ window.saveToCloud = async function() {
             <button onclick="editRow(${i})" class="bg-gray-700 hover:bg-indigo-600 text-[10px] text-white px-2 py-1 rounded transition-colors">
                 MODIF
             </button>
+			<button onclick="deleteRow(${i})" class="bg-red-500 hover:bg-red-700 text-[10px] text-white px-2 py-1 rounded transition-colors" title="Supprimer">
+				✕
+			</button>
         </td>
     </tr>`;
 }).join('');
@@ -649,6 +652,41 @@ window.saveToCloud = async function() {
     
     // Refresh de la vue
     displayData();
+}
+
+async function deleteRow(index) {
+    // 1. On récupère le mois EXACT du sélecteur HTML (comme dans editRow)
+    const monthSelector = document.getElementById('month-selector');
+    const m = monthSelector ? monthSelector.value : new Date().getMonth();
+    
+    // 2. On récupère les données du LocalStorage
+    const s = JSON.parse(localStorage.getItem('fitAppDataV7'));
+    
+    // 3. Vérification de sécurité
+    if (!s || !s.journal[m] || !s.journal[m][index]) {
+        console.error("Erreur d'index suppression :", { mois: m, index: index });
+        return;
+    }
+
+    // 4. Confirmation avant suppression
+    const confirmation = confirm(`Supprimer la ligne du ${index + 1} ${monthSelector.options[monthSelector.selectedIndex].text} ?`);
+    if (!confirmation) return;
+
+    // 5. Suppression de la ligne dans le tableau local
+    // .splice(index, 1) retire 1 élément à partir de la position 'index'
+    s.journal[m].splice(index, 1);
+
+    // 6. Sauvegarde dans le LocalStorage
+    localStorage.setItem('fitAppDataV7', JSON.stringify(s));
+
+    // 7. Sauvegarde Cloud (Firebase)
+    if (window.saveToCloud) {
+        await window.saveToCloud();
+    }
+    
+    // 8. Refresh de l'affichage
+    displayData();
+    console.log("Ligne supprimée avec succès");
 }
 
 
