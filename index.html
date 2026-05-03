@@ -744,10 +744,20 @@ async function deleteRow(index) {
             const d = s.mesures[k];
             html += `
                 <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm mb-4">
-                    <div class="flex justify-between items-center mb-3 border-b pb-2">
-                        <span class="font-black text-indigo-600 uppercase text-[11px]">${monthNames[k]} 2026</span>
-                        <span class="text-[8px] text-gray-400 font-bold uppercase">Relevé le ${d.date || '---'}</span>
-                    </div>
+    <div class="flex justify-between items-center mb-3 border-b pb-2">
+        <span class="font-black text-indigo-600 uppercase text-[11px]">${monthNames[k]} 2026</span>
+        <div class="flex items-center gap-2">
+            <span class="text-[8px] text-gray-400 font-bold uppercase italic">Relevé le ${d.date || '---'}</span>
+            <!-- Bouton Modif -->
+            <button onclick="editMensurations(${k})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-[8px] px-2 py-0.5 rounded-full font-black transition-colors">
+                MODIF
+            </button>
+            <!-- Bouton Suppr -->
+            <button onclick="deleteMensurations(${k})" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-[8px] px-2 py-0.5 rounded-full font-black transition-colors">
+                ✕
+            </button>
+        </div>
+    </div>
                     
                     <div class="flex flex-wrap gap-x-4 gap-y-2 text-[10px] mb-4 bg-gray-50 p-2 rounded-xl">
                         <span class="text-gray-500 font-bold uppercase text-[8px] w-full mb-1">Haut du corps & Buste</span>
@@ -784,6 +794,59 @@ async function deleteRow(index) {
     }
     
     document.getElementById('m-history').innerHTML = html;
+}
+
+async function deleteMensurations(k) {
+    if (!confirm(`Supprimer les mensurations de ${monthNames[k]} ?`)) return;
+
+    let s = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
+    
+    // On supprime la clé du mois
+    if (s.mesures && s.mesures[k]) {
+        delete s.mesures[k];
+    }
+
+    // Sauvegarde et Sync
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    
+    if (window.saveToCloud) {
+        await window.saveToCloud();
+    }
+
+    alert("🗑️ Données supprimées");
+    displayMensurations(); // On rafraîchit la liste
+}
+
+async function editMensurations(k) {
+    let s = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
+    let data = s.mesures[k];
+
+    if (!data) return;
+
+    // On boucle sur tes 'fields' définis en haut de ton script
+    for (let f of fields) {
+        let currentVal = data[f] || 0;
+        let promptVal = prompt(`Modifier ${f.toUpperCase()} (cm) :`, currentVal);
+        
+        // Si l'utilisateur clique sur "Annuler", on stoppe la modification
+        if (promptVal === null) return; 
+        
+        // On remplace la virgule par un point et on transforme en nombre
+        data[f] = parseFloat(promptVal.toString().replace(',', '.')) || 0;
+    }
+
+    // Mise à jour de la date pour indiquer une modification
+    data.date = new Date().toLocaleDateString() + " (modifié)";
+    
+    s.mesures[k] = data;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+
+    if (window.saveToCloud) {
+        await window.saveToCloud();
+    }
+
+    alert("✅ Modification enregistrée !");
+    displayMensurations();
 }
 
         // --- SPORT ---
