@@ -1125,14 +1125,17 @@ function addExoManual(tIdx) {
         <div class="space-y-5">${t.exercises.map((ex, exIdx) => {
             const noteEx = allNotes[ex.name] || "";
             
+            // Sécurité : si ex.reps ou ex.sets n'existent pas dans ton stockage, on met une valeur par défaut
+            const displayReps = ex.reps || "10-12"; 
+            const displaySets = ex.sets || "3";
+
             // LOGIQUE VISUELLE SUPERSET
             const hasLinkToNext = ex.superset === true;
             const isLinkedFromPrev = exIdx > 0 && t.exercises[exIdx - 1].superset === true;
             const partOfSuperset = hasLinkToNext || isLinkedFromPrev;
             
             return `
-            <!-- Bloc Exercice -->
-            <div id="sets-container-${exIdx}" class="bg-white p-4 rounded-3xl border ${partOfSuperset ? 'border-orange-200 shadow-orange-50' : 'shadow-sm'} relative">
+            <div id="sets-container-${exIdx}" class="bg-white p-4 rounded-3xl border ${partOfSuperset ? 'border-orange-200 shadow-orange-50' : 'border-gray-100 shadow-sm'} relative">
                 
                 ${partOfSuperset ? `
                     <span class="absolute -top-2 left-6 bg-orange-500 text-white text-[7px] px-2 py-0.5 rounded-full font-black uppercase shadow-sm">
@@ -1141,11 +1144,16 @@ function addExoManual(tIdx) {
                 ` : ''}
                 
                 <div class="flex justify-between items-center mb-1 text-[10px] font-black uppercase">
-                    <span class="${partOfSuperset ? 'text-orange-600' : ''}">${ex.name}</span>
-                    <span class="text-orange-500">HISTO: ${ex.lastPerf}</span>
+                    <span class="${partOfSuperset ? 'text-orange-600' : 'text-indigo-900'}">${ex.name}</span>
+                    <span class="text-orange-500 font-bold">HISTO: ${ex.lastPerf || '---'}</span>
                 </div>
 
-                <!-- ZONE DE NOTE PERMANENTE -->
+                <div class="flex items-center gap-2 mb-3 bg-emerald-50/80 p-2 rounded-xl border border-emerald-100">
+                    <div class="flex-1 text-[9px] text-emerald-800 font-black uppercase tracking-wider">
+                        🎯 Objectif : <span class="text-emerald-600">${displaySets} séries</span> x <span class="text-emerald-600">${displayReps} reps</span>
+                    </div>
+                </div>
+
                 <div class="flex items-center gap-2 mb-3 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50">
                     <div class="flex-1 text-[9px] text-indigo-900 italic leading-tight" id="note-display-${exIdx}">
                         ${noteEx ? `<b>Note:</b> ${noteEx}` : `<span class="text-gray-400">Aucune consigne...</span>`}
@@ -1153,35 +1161,47 @@ function addExoManual(tIdx) {
                     <button onclick="editExerciseNote('${ex.name}', ${exIdx})" class="text-[12px] opacity-60 hover:opacity-100">📝</button>
                 </div>
 				
-				<!-- Temps de repos -->
-				<div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-xl mb-3">
-				<div class="text-[9px] font-black text-gray-400 uppercase">Repos préconisé</div>
+				<div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-xl mb-4">
+				    <div class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Repos préconisé</div>
 					<button onclick="startTimer('${ex.rest}')" class="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-lg shadow-sm active:scale-95 transition-transform">
 							⏱️ ${ex.rest || '1:30'}
 					</button>
 				</div>
 
-           
-                <div class="space-y-2">
-                    ${Array.from({length: parseInt(ex.sets)||3}).map((_, s) => `
+                <div class="grid grid-cols-5 gap-2 mb-1 px-1">
+                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Set</div>
+                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Charge</div>
+                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Reps</div>
+                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">RIR</div>
+                    <div></div>
+                </div>
+
+                <div class="space-y-2" id="exercise-rows-${exIdx}">
+                    ${Array.from({length: parseInt(displaySets)}).map((_, s) => `
                         <div class="grid grid-cols-5 gap-2 items-center set-row-${exIdx}">
-                            <div class="text-center font-bold text-indigo-600 text-xs">#${s+1}</div>
-                            <input class="p-input bg-gray-50 p-2 rounded-lg text-xs" type="number" placeholder="kg">
-                            <input class="r-input bg-gray-50 p-2 rounded-lg text-xs" type="number" placeholder="reps">
-                            <select class="rir-input bg-gray-50 p-2 rounded-lg text-[10px] font-bold">
-                                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                            <div class="text-center font-black text-indigo-600 text-xs">#${s+1}</div>
+                            <input class="p-input bg-gray-50 p-2 rounded-lg text-xs font-bold text-center outline-none focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all" type="number" placeholder="kg" inputmode="decimal">
+                            <input class="r-input bg-gray-50 p-2 rounded-lg text-xs font-bold text-center outline-none focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all" type="number" placeholder="reps" inputmode="numeric">
+                            <select class="rir-input bg-gray-50 p-2 rounded-lg text-[10px] font-black text-center outline-none appearance-none">
+                                <option value="-">-</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
                             </select>
-                            <button onclick="this.parentElement.remove()" class="text-red-300 text-xs font-bold">✕</button>
+                            <button onclick="this.parentElement.remove()" class="text-red-300 text-xs font-bold hover:text-red-500">✕</button>
                         </div>
                     `).join('')}
                 </div>
-                <button onclick="addSetRow(${exIdx})" class="w-full mt-3 text-indigo-400 text-[8px] font-black uppercase">+ AJOUTER SÉRIE</button>
+
+                <button onclick="addSetRow(${exIdx})" class="w-full mt-4 py-2 border-2 border-dashed border-gray-100 rounded-xl text-gray-400 text-[8px] font-black uppercase hover:bg-gray-50 transition-all">
+                    + AJOUTER UNE SÉRIE
+                </button>
             </div>
 
-            <!-- LIEN VISUEL : Uniquement si l'exercice actuel pointe vers le suivant -->
             ${hasLinkToNext ? `
                 <div class="flex justify-center -my-5 relative z-10">
-                    <div class="bg-orange-500 text-white text-[8px] font-black px-4 py-1 rounded-full shadow-md uppercase flex items-center gap-2">
+                    <div class="bg-orange-500 text-white text-[8px] font-black px-4 py-1 rounded-full shadow-md uppercase flex items-center gap-2 border-2 border-white">
                         <span>Enchaîner</span>
                         <svg class="w-3 h-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
@@ -1190,7 +1210,10 @@ function addExoManual(tIdx) {
                 </div>
             ` : ''}
         `}).join('')}</div>
-        <button onclick="finishTraining(${idx})" class="w-full bg-green-600 text-white font-black py-5 rounded-3xl mt-8 uppercase tracking-widest text-xs mb-10 shadow-lg">Enregistrer Séance</button>
+        
+        <button onclick="finishTraining(${idx})" class="w-full bg-emerald-600 text-white font-black py-5 rounded-[30px] mt-10 uppercase tracking-widest text-xs mb-20 shadow-xl active:scale-95 transition-all">
+            ✅ Enregistrer la séance
+        </button>
     `;
 
     document.getElementById('entrainement').innerHTML = entrainementHtml;
