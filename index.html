@@ -289,11 +289,19 @@ window.saveToCloud = async function() {
         <section id="suivi" class="page space-y-5">
             <div class="flex items-center space-x-3">
                 <select id="month-selector" onchange="displayData()" class="bg-white border border-gray-200 rounded-xl px-4 py-2 font-black text-indigo-600 shadow-sm outline-none text-sm appearance-none">
-                    <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option>
-                    <option value="3" selected>Avril</option><option value="4">Mai</option><option value="5">Juin</option>
-                    <option value="6">Juillet</option><option value="7">Août</option><option value="8">Septembre</option>
-                    <option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
-                </select>
+    <option value="0">Janvier</option>
+    <option value="1">Février</option>
+    <option value="2">Mars</option>
+    <option value="3">Avril</option> 
+	<option value="4">Mai</option>
+    <option value="5">Juin</option>
+    <option value="6">Juillet</option>
+    <option value="7">Août</option>
+    <option value="8">Septembre</option>
+    <option value="9">Octobre</option>
+    <option value="10">Novembre</option>
+    <option value="11">Décembre</option>
+</select>
                 <span class="text-gray-400 font-bold text-sm">2026</span>
             </div>
 
@@ -305,11 +313,27 @@ window.saveToCloud = async function() {
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-white p-3 rounded-2xl border text-center"><p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Poids</p><p id="avg-poids" class="text-sm font-black text-indigo-600">--</p></div>
-                <div class="bg-white p-3 rounded-2xl border text-center"><p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Pas</p><p id="avg-pas" class="text-sm font-black text-green-500">--</p></div>
-                <div class="bg-white p-3 rounded-2xl border text-center"><p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Sommeil</p><p id="avg-sleep" class="text-sm font-black text-blue-500">--</p></div>
-            </div>
+            <div class="bg-white p-4 rounded-3xl border text-center mb-2 shadow-sm">
+    <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest">Moyenne Poids</p>
+    <p id="avg-poids" class="text-xl font-black text-indigo-600">--</p>
+</div>
+
+<div class="grid grid-cols-3 gap-2">
+    <div class="bg-white p-3 rounded-2xl border text-center shadow-sm">
+        <p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Pas</p>
+        <p id="avg-pas" class="text-sm font-black text-green-500">--</p>
+    </div>
+    
+    <div class="bg-white p-3 rounded-2xl border text-center shadow-sm">
+        <p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Cals</p>
+        <p id="avg-cals" class="text-sm font-black text-orange-500">--</p>
+    </div>
+
+    <div class="bg-white p-3 rounded-2xl border text-center shadow-sm">
+        <p class="text-[8px] text-gray-400 font-bold uppercase">Moy. Dodo</p>
+        <p id="avg-sleep" class="text-sm font-black text-blue-500">--</p>
+    </div>
+</div>
 
             <div class="bg-white p-5 rounded-3xl shadow-sm border">
                 <h3 class="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">Saisie Journalière J<span id="day-counter">1</span></h3>
@@ -577,37 +601,63 @@ window.saveToCloud = async function() {
 }
 
         function displayData() {
-            const m = document.getElementById('month-selector').value;
-            const storage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
-            const entries = (storage.journal && storage.journal[m]) || [];
-            document.getElementById('day-counter').innerText = entries.length + 1;
-            if (entries.length > 0) {
-                document.getElementById('bilan-coach').classList.remove('hidden');
-                const avgP = (entries.reduce((s, e) => s + e.poids, 0) / entries.length).toFixed(1);
-                document.getElementById('avg-poids').innerText = avgP + "kg";
-                document.getElementById('avg-pas').innerText = Math.round(entries.reduce((s, e) => s + e.pas, 0) / entries.length);
-                document.getElementById('avg-sleep').innerText = (entries.reduce((s, e) => s + e.sommeil, 0) / entries.length).toFixed(1) + "h";
-                const diffP = (entries[entries.length-1].poids - entries[0].poids).toFixed(1);
-                document.getElementById('bilan-poids').innerHTML = `<span class="${diffP <= 0 ? 'text-green-400' : 'text-orange-400'}">${diffP > 0 ? '+' : ''}${diffP}kg</span>`;
-                document.getElementById('bilan-sport').innerText = entries.filter(e => e.onoff === "ON").length + " ON";
-            } else { document.getElementById('bilan-coach').classList.add('hidden'); }
-           document.getElementById('tableau-corps').innerHTML = entries.map((e, i) => {
-    // On sécurise le commentaire pour éviter de casser le HTML
-    const safeComs = e.coms ? e.coms.replace(/'/g, "&apos;").replace(/"/g, "&quot;") : "";
+    const m = document.getElementById('month-selector').value;
+    const storage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
+    const entries = (storage.journal && storage.journal[m]) || [];
+    
+    document.getElementById('day-counter').innerText = entries.length + 1;
 
-    return `
-    <tr class="border-b border-gray-800 active:bg-gray-800 cursor-pointer">
-        <td class="p-3 text-indigo-400 font-bold">J${i+1}</td>
-        <td class="p-3 font-bold text-white">${e.poids || '-'}</td>
-        <td class="p-3 text-center">
-            ${e.onoff === "ON" ? '<span class="text-xs">💪</span>' : '<span class="text-xs opacity-30">😴</span>'}
-        </td>
-        <td class="p-3 text-gray-500">${e.heure || '--:--'}</td>
-        <td class="p-3 text-orange-400 font-bold">${e.calories || '-'}</td>
-        <td class="p-3 text-green-400">${e.pas || '-'}</td>
-        <td class="p-3 text-blue-400">${e.sommeil || '-'}h</td>
-        <td class="p-3 text-center">
-            ${e.coms ? `<button onclick="alert('Note : ${safeComs}')" class="text-indigo-400 animate-pulse">💬</button>` : '-'}
+    if (entries.length > 0) {
+        document.getElementById('bilan-coach').classList.remove('hidden');
+
+        // 1. Calcul des moyennes
+        const avgP = (entries.reduce((s, e) => s + (parseFloat(e.poids) || 0), 0) / entries.length).toFixed(1);
+        const avgPas = Math.round(entries.reduce((s, e) => s + (parseInt(e.pas) || 0), 0) / entries.length);
+        const avgSleep = (entries.reduce((s, e) => s + (parseFloat(e.sommeil) || 0), 0) / entries.length).toFixed(1);
+        
+        // --- AJOUT : CALCUL MOYENNE CALORIES ---
+        const avgCals = Math.round(entries.reduce((s, e) => s + (parseInt(e.calories) || 0), 0) / entries.length);
+        // ---------------------------------------
+
+        // 2. Affichage des moyennes dans le HTML
+        document.getElementById('avg-poids').innerText = avgP + "kg";
+        document.getElementById('avg-pas').innerText = avgPas;
+        document.getElementById('avg-sleep').innerText = avgSleep + "h";
+        
+        // --- AJOUT : AFFICHAGE CALORIES ---
+        const calsDisplay = document.getElementById('avg-cals');
+        if (calsDisplay) {
+            calsDisplay.innerText = avgCals + " kcal";
+        }
+        // ----------------------------------
+
+        // 3. Calcul du bilan (différence de poids)
+        const diffP = (entries[entries.length-1].poids - entries[0].poids).toFixed(1);
+        document.getElementById('bilan-poids').innerHTML = `<span class="${diffP <= 0 ? 'text-green-400' : 'text-orange-400'}">${diffP > 0 ? '+' : ''}${diffP}kg</span>`;
+        
+        // 4. Nombre de séances
+        document.getElementById('bilan-sport').innerText = entries.filter(e => e.onoff === "ON").length + " ON";
+
+    } else { 
+        document.getElementById('bilan-coach').classList.add('hidden'); 
+    }
+
+    // 5. Rendu du tableau
+    document.getElementById('tableau-corps').innerHTML = entries.map((e, i) => {
+        const safeComs = e.coms ? e.coms.replace(/'/g, "&apos;").replace(/"/g, "&quot;") : "";
+        return `
+        <tr class="border-b border-gray-800 active:bg-gray-800 cursor-pointer">
+            <td class="p-3 text-indigo-400 font-bold">J${i+1}</td>
+            <td class="p-3 font-bold text-white">${e.poids || '-'}</td>
+            <td class="p-3 text-center">
+                ${e.onoff === "ON" ? '<span class="text-xs">💪</span>' : '<span class="text-xs opacity-30">😴</span>'}
+            </td>
+            <td class="p-3 text-gray-500">${e.heure || '--:--'}</td>
+            <td class="p-3 text-orange-400 font-bold">${e.calories || '-'}</td>
+            <td class="p-3 text-green-400">${e.pas || '-'}</td>
+            <td class="p-3 text-blue-400">${e.sommeil || '-'}h</td>
+            <td class="p-3 text-center">
+                ${e.coms ? `<button onclick="alert('Note : ${safeComs}')" class="text-indigo-400 animate-pulse">💬</button>` : '-'}
         </td>
         <td class="p-3 text-center">
             <button onclick="editRow(${i})" class="bg-gray-700 hover:bg-indigo-600 text-[10px] text-white px-2 py-1 rounded transition-colors">
@@ -1617,57 +1667,83 @@ async function editExerciseNote(exerciseName, exIdx) {
         }
         function closeStats() { document.getElementById('stats-modal').style.display = 'none'; }
         
-        window.onload = () => { displayData(); displayMensurations(); displayTrainings(); };
+      window.onload = () => {
+    // 1. On récupère le sélecteur dans le HTML
+    const monthSelector = document.getElementById('month-selector');
+    
+    if (monthSelector) {
+        // 2. On détecte le mois actuel (0 pour Janvier, 4 pour Mai, etc.)
+        const currentMonth = new Date().getMonth();
+        
+        // 3. On force la valeur du sélecteur sur le mois en cours
+        monthSelector.value = currentMonth;
+    }
+
+    // 4. On lance tes fonctions habituelles
+    displayData(); 
+    displayMensurations(); 
+    displayTrainings(); 
+};
 		
 		// --- GRAPHES SPORT ---
 		
 		let myProgChart = null;
+		let myPrChart = null;
 
 function updateProgressionChart() {
     const exoName = document.getElementById('select-exo-chart').value;
     if (!exoName) return;
 
-    // Récupération de l'historique (on gère le cas où c'est un objet ou une liste)
-    const historyData = JSON.parse(localStorage.getItem('fitProgressionHistoryV1')) || {};
-    
+    const historyData = JSON.parse(localStorage.getItem('fitProgressionHistoryV1')) || [];
     let dataExo = [];
 
-    // Si c'est le nouveau format (Objet avec noms d'exos en clés)
-    if (historyData[exoName]) {
-        dataExo = historyData[exoName];
-    } 
-    // Sécurité : Si c'est l'ancien format (Liste plate)
-    else if (Array.isArray(historyData)) {
+    // On filtre les données pour l'exercice sélectionné
+    if (Array.isArray(historyData)) {
         dataExo = historyData.filter(h => h.exercice === exoName || h.name === exoName);
+    } else {
+        // Si c'est le format objet {nom: []}
+        dataExo = historyData[exoName] || [];
     }
 
     if (dataExo.length === 0) return;
 
-    // Préparation des données pour Chart.js
-    // On prend soit le volume si présent, soit le poids (weight)
     const labels = dataExo.map(h => h.date);
-    const values = dataExo.map(h => {
-        if (h.volume) return h.volume;
-        return parseFloat(h.weight) || 0;
-    });
 
-    const ctx = document.getElementById('progressionChart').getContext('2d');
+    // --- DONNÉES VOLUME ---
+    const volumeValues = dataExo.map(h => h.volume || 0);
+
+    // --- DONNÉES PR (POIDS MAX) ---
+    // On utilise h.max car c'est ce que tu as mis dans finishTraining
+    const prValues = dataExo.map(h => parseFloat(h.max || h.weight || 0));
+
+    // Rendu du graph Volume (Indigo)
+    renderSingleChart('progressionChart', 'Volume Total (kg)', volumeValues, labels, '#4f46e5', 'myProgChart');
     
-    if (window.myProgChart) window.myProgChart.destroy(); 
+    // Rendu du graph PR (Orange)
+    renderSingleChart('prChart', 'Meilleur PR (Poids Max)', prValues, labels, '#f97316', 'myPrChart');
+}
 
-    window.myProgChart = new Chart(ctx, {
+// Fonction générique pour créer les charts
+function renderSingleChart(canvasId, label, data, labels, color, globalVarName) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Destruction de l'instance précédente pour éviter les bugs au survol
+    if (globalVarName === 'myProgChart' && window.myProgChart) window.myProgChart.destroy();
+    if (globalVarName === 'myPrChart' && window.myPrChart) window.myPrChart.destroy();
+
+    const chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Performance',
-                data: values,
-                borderColor: '#4f46e5',
-                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                label: label,
+                data: data,
+                borderColor: color,
+                backgroundColor: color + '1A', // Couleur avec 10% d'opacité
                 borderWidth: 3,
                 fill: true,
                 tension: 0.3,
-                pointBackgroundColor: '#4f46e5',
+                pointBackgroundColor: color,
                 pointRadius: 4
             }]
         },
@@ -1675,27 +1751,24 @@ function updateProgressionChart() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { 
-                    beginAtZero: false,
-                    grid: { color: 'rgba(0,0,0,0.05)' }
-                },
+                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
                 x: { grid: { display: false } }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     backgroundColor: '#1f2937',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
                     callbacks: {
-                        label: function(context) {
-                            return ` Performance: ${context.parsed.y} kg`;
-                        }
+                        label: (context) => ` ${context.parsed.y} ${label.includes('PR') ? 'kg' : ''}`
                     }
                 }
             }
         }
     });
+
+    // On assigne à la variable globale
+    if (globalVarName === 'myProgChart') window.myProgChart = chart;
+    if (globalVarName === 'myPrChart') window.myPrChart = chart;
 }
 
 		function fillChartExoList() {
@@ -1737,22 +1810,30 @@ function updateProgressionChart() {
 
         <div class="bg-white p-5 rounded-[30px] shadow-sm border border-gray-100 mb-6">
             <p class="text-[9px] font-black text-indigo-400 uppercase mb-3">Sélectionner un exercice :</p>
-            <select id="select-exo-chart" onchange="updateProgressionChart()" class="w-full p-4 rounded-2xl border-none text-xs font-bold bg-gray-50 shadow-inner appearance-none outline-none">
+            <select id="select-exo-chart" onchange="updateProgressionChart()" class="w-full p-4 rounded-2xl border-none text-xs font-bold bg-gray-50 shadow-inner outline-none">
                 <option value="">-- Charger l'historique --</option>
             </select>
         </div>
 
-        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm" style="height: 300px;">
-            <canvas id="progressionChart"></canvas>
+        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm mb-6">
+            <p class="text-[9px] font-black text-gray-400 uppercase mb-2 ml-2">📊 Volume Total (Charge x Reps)</p>
+            <div style="height: 250px;">
+                <canvas id="progressionChart"></canvas>
+            </div>
         </div>
 
-        <div class="mt-6 text-center">
-            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Évolution de la charge au fil des séances</p>
+        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm">
+            <p class="text-[9px] font-black text-orange-400 uppercase mb-2 ml-2">🔥 Meilleur PR (Poids Max)</p>
+            <div style="height: 250px;">
+                <canvas id="prChart"></canvas>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center pb-10">
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Suivi de progression en temps réel</p>
         </div>
     `;
 
-    // On utilise setTimeout(0) pour laisser le temps au navigateur de rendre le HTML
-    // avant de remplir la liste et de préparer le graphique
     setTimeout(() => {
         fillChartExoList();
     }, 0);
