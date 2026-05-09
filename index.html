@@ -252,38 +252,99 @@ window.saveToCloud = async function() {
     <main class="p-4 flex-1 pb-24">
         
         <section id="accueil" class="page active space-y-6">
-            <div class="bg-white p-8 rounded-3xl shadow-sm text-center border border-gray-200">
-                <div class="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">📺</div>
-                <h2 class="text-lg font-bold text-gray-800 uppercase">Ma Chaîne YouTube</h2>
-                <a href="https://www.youtube.com/@GabGLSS" class="inline-block mt-4 bg-red-600 text-white px-8 py-3 rounded-xl font-bold shadow-md text-xs">VOIR LES VIDÉOS</a>
+		
+		<div class="space-y-3">
+    
+    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between overflow-hidden relative">
+        <div class="relative z-10">
+            <h3 class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Série en cours</h3>
+            <div class="flex items-end gap-1.5">
+                <span id="streak-count" class="text-4xl font-black text-gray-900 leading-none">0</span>
+                <span class="text-sm font-bold text-gray-500 pb-1">jours</span>
             </div>
-			
-			
-<div class="h-px bg-gray-100 w-full mb-6"></div> ```
+            <p id="streak-consigne" class="text-[9px] text-gray-400 mt-2 font-medium">Remplis poids + calories pour l'allumer !</p>
+        </div>
+        
+        <div id="streak-fire-container" class="text-6xl opacity-20 grayscale transition-all duration-1000 scale-90 relative">
+            🔥
+            <div class="absolute inset-0 bg-orange-400 rounded-full blur-2xl opacity-0 transition-opacity duration-1000" id="fire-glow"></div>
+        </div>
+    </div>
 
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+            <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Statut Pesée</h3>
+            <div id="check-poids-container" class="w-12 h-12 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center text-xl transition-all duration-500">⚖️</div>
+            <p id="check-poids-text" class="text-[9px] font-black uppercase mt-2 text-gray-300 tracking-wider">À remplir</p>
+        </div>
 
-            <div class="bg-gray-900 p-6 rounded-3xl text-white shadow-xl space-y-4">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Transfert Coach / Client</p>
-                <div class="flex space-x-2">
-                    <button onclick="exportData()" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95 transition-transform">💾 Sauvegarder</button>
-                    <label class="flex-1 bg-gray-700 text-gray-300 py-4 rounded-xl font-black text-[10px] uppercase shadow-md cursor-pointer text-center active:scale-95 transition-transform border border-gray-600">
-                        📥 Importer
-                        <input type="file" id="importFile" class="hidden" onchange="importData(event)">
-                    </label>
-                </div>
-                <p class="text-[9px] text-gray-500 text-center italic leading-relaxed px-4">Utilise ces boutons pour sauvegarder tes données ou importer le suivi d'un client.</p>
+        <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+            <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Objectif Hebdo</h3>
+            <div class="relative w-12 h-12 mx-auto flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90">
+                    <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" class="text-gray-100" />
+                    <circle id="weekly-progress-bar" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" stroke-dasharray="125.6" stroke-dashoffset="125.6" class="text-indigo-600 transition-all duration-1000" />
+                </svg>
+                <span id="weekly-count" class="absolute text-[10px] font-black text-indigo-600">0/4</span>
             </div>
-			<div class="mt-4 flex gap-3">
-    <a href="https://wa.me/33632888955" target="_blank" class="flex-1 bg-green-600 text-white py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
-        <span class="text-lg">💬</span>
-        <span class="text-[10px] font-black uppercase tracking-wider">WhatsApp</span>
-    </a>
-
-    <a href="mailto:gabgls.coaching@gmail.com" class="flex-1 bg-white border border-gray-200 text-gray-800 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
-        <span class="text-lg">✉️</span>
-        <span class="text-[10px] font-black uppercase tracking-wider">Email</span>
-    </a>
+            <p class="text-[9px] font-black uppercase mt-2 text-gray-400 tracking-wider">Séances faites</p>
+        </div>
+    </div>
 </div>
+
+<div class="h-px bg-gray-100 w-full mb-6"></div> ```
+		
+    <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between mb-4 px-2">
+            <div class="flex items-center gap-2">
+                <span class="text-red-600 text-xl">📺</span>
+                <h2 class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Dernières Vidéos</h2>
+            </div>
+            <a href="https://www.youtube.com/@GabGLSS" target="_blank" class="text-[9px] font-black text-indigo-600 uppercase">Voir la chaîne →</a>
+        </div>
+
+        <a id="youtube-link" href="#" target="_blank" class="block relative group">
+            <div class="aspect-video w-full rounded-2xl overflow-hidden bg-gray-100 relative">
+                <img id="youtube-thumb" src="" alt="Thumbnail" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                <div class="absolute bottom-0 left-0 p-4">
+                    <p id="youtube-title" class="text-white text-xs font-bold leading-tight"></p>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-12 h-12 bg-red-600/90 rounded-full flex items-center justify-center shadow-lg transform group-active:scale-90 transition-transform">
+                        <div class="w-0 h-0 border-y-[8px] border-y-transparent border-l-[12px] border-l-white ml-1"></div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <div id="carousel-dots" class="flex justify-center gap-1.5 mt-3">
+            </div>
+    </div>
+			
+			
+
+            <div class="space-y-3">
+    <div class="flex gap-3">
+        <a href="https://wa.me/33632888955" class="flex-1 bg-emerald-500 text-white py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 active:scale-95 transition-transform">
+            <span class="text-sm font-black uppercase tracking-wider">WhatsApp</span>
+        </a>
+        <a href="mailto:gabgls.coaching@gmail.com" class="flex-1 bg-white border border-gray-200 text-gray-800 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+            <span class="text-sm font-black uppercase tracking-wider">Email</span>
+        </a>
+    </div>
+
+    <div class="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
+        <span class="text-[9px] font-bold text-gray-400 uppercase">Gestion des données</span>
+        <div class="flex gap-2">
+            <button onclick="exportData()" class="text-[9px] font-black text-indigo-600 uppercase p-2">Sauvegarder</button>
+            <label class="text-[9px] font-black text-gray-400 uppercase p-2 cursor-pointer">
+                Importer <input type="file" class="hidden" onchange="importData(event)">
+            </label>
+        </div>
+    </div>
+</div>
+			
         </section>
 
         <section id="suivi" class="page space-y-5">
@@ -1683,6 +1744,8 @@ async function editExerciseNote(exerciseName, exIdx) {
     displayData(); 
     displayMensurations(); 
     displayTrainings(); 
+	initYoutubeCarousel();
+	updateDailyDashboard();
 };
 		
 		// --- GRAPHES SPORT ---
@@ -1838,6 +1901,161 @@ function renderSingleChart(canvasId, label, data, labels, color, globalVarName) 
         fillChartExoList();
     }, 0);
 }
+
+//-- SCRIPT PARTIE ACCUEIL --
+
+// Liste de tes vidéos (ID YouTube et Titre)
+const MY_VIDEOS = [
+    { id: 'kPQ-_uKiDM4', title: 'Mon meilleur pré-workout en ce moment 🕙' },
+    { id: 'CTie0qCCLxM', title: 'Accessoire de muscu #6: Isolation & Bras de levier optimisé avec les cuffs 💪' }, 
+    { id: 'U1LlAPD1F6Q', title: 'Accessoire de muscu #5: Décompression vertébrale avec les Gravity Boots 💪' }
+];
+
+let currentVideoIdx = 0;
+
+function updateYoutubeCarousel() {
+    const video = MY_VIDEOS[currentVideoIdx];
+    const thumbImg = document.getElementById('youtube-thumb');
+    const titleTxt = document.getElementById('youtube-title');
+    const linkBtn = document.getElementById('youtube-link');
+    const dotsContainer = document.getElementById('carousel-dots');
+
+    if (!thumbImg) return;
+
+    // Mise à jour de l'image (Haute Qualité YouTube)
+    thumbImg.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`;
+    
+    // Mise à jour du titre et du lien
+    titleTxt.innerText = video.title;
+    linkBtn.href = `https://www.youtube.com/watch?v=${video.id}`;
+
+    // Mise à jour des petits points (dots)
+    dotsContainer.innerHTML = MY_VIDEOS.map((_, i) => `
+        <div class="h-1 rounded-full transition-all duration-500 ${i === currentVideoIdx ? 'w-4 bg-red-600' : 'w-1 bg-gray-200'}"></div>
+    `).join('');
+
+    // Passer à la suivante
+    currentVideoIdx = (currentVideoIdx + 1) % MY_VIDEOS.length;
+}
+
+// Initialisation du carrousel
+function initYoutubeCarousel() {
+    updateYoutubeCarousel(); // Affiche la première immédiatement
+    setInterval(updateYoutubeCarousel, 3000); // Change toutes les 3 secondes
+}
+
+function updateDailyDashboard() {
+    const STORAGE_KEY = 'fitAppDataV7';
+    const SPORT_KEY = 'fitTrainingDataV2';
+    const HISTORY_KEY = 'fitProgressionHistoryV1'; // Ta clé d'historique
+    
+    const storage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {} };
+    const myTrainings = JSON.parse(localStorage.getItem(SPORT_KEY)) || [];
+    const myHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+    
+    const now = new Date();
+    let checkMonth = now.getMonth();
+    let checkDay = now.getDate();
+    
+    // --- 1. CALCUL DU STREAK (FLAMME) ---
+    let streak = 0;
+    let searching = true;
+    const isEntryValid = (m, d) => {
+        return storage.journal[m] && storage.journal[m][d] && storage.journal[m][d].poids > 0;
+    };
+
+    if (isEntryValid(checkMonth, checkDay - 1)) streak++;
+    let d = checkDay - 2;
+    let m = checkMonth;
+
+    while (searching) {
+        if (d < 0) {
+            m--;
+            if (m < 0 || !storage.journal[m]) { searching = false; break; }
+            d = storage.journal[m].length - 1;
+        }
+        if (isEntryValid(m, d)) { streak++; d--; } else { searching = false; }
+    }
+
+    const streakCount = document.getElementById('streak-count');
+    if (streakCount) {
+        streakCount.innerText = streak;
+        const fireContainer = document.getElementById('streak-fire-container');
+        if (streak > 0) {
+            fireContainer.classList.remove('grayscale', 'opacity-20');
+            streakCount.classList.add('text-orange-500');
+        } else {
+            fireContainer.classList.add('grayscale', 'opacity-20');
+            streakCount.classList.remove('text-orange-500');
+        }
+    }
+
+    // --- 2. OBJECTIF SÉANCES (VIA HISTORIQUE DES PERFS) ---
+    const targetSessions = myTrainings.length > 0 ? myTrainings.length : 5;
+
+    // Calcul du Lundi de cette semaine
+    const startOfWeek = new Date(now);
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // On utilise un Set pour ne compter qu'une seule fois par jour 
+    // même s'il y a plusieurs exercices enregistrés le même jour
+    let uniqueTrainingDays = new Set();
+
+    if (Array.isArray(myHistory)) {
+        myHistory.forEach(h => {
+            // h.timestamp est le plus précis, sinon on utilise h.date
+            const datePerf = h.timestamp ? new Date(h.timestamp) : new Date(h.date);
+            
+            if (datePerf >= startOfWeek && datePerf <= now) {
+                // On ajoute la date formatée (ex: "2026-05-09") au Set
+                uniqueTrainingDays.add(datePerf.toLocaleDateString());
+            }
+        });
+    }
+
+    let sessionsDone = uniqueTrainingDays.size;
+
+    const circle = document.getElementById('weekly-progress-bar');
+    const countText = document.getElementById('weekly-count');
+    if (circle && countText) {
+        const circumference = 125.6;
+        const progress = Math.min(sessionsDone, targetSessions) / targetSessions;
+        circle.style.strokeDashoffset = circumference - (progress * circumference);
+        countText.innerText = `${sessionsDone}/${targetSessions}`;
+        
+        if (sessionsDone >= targetSessions) {
+            circle.classList.add('text-emerald-500');
+            circle.classList.remove('text-indigo-600');
+        } else {
+            circle.classList.add('text-indigo-600');
+            circle.classList.remove('text-emerald-500');
+        }
+    }
+
+    // --- 3. STATUT PESÉE ---
+    const currentMonthData = storage.journal[checkMonth] || [];
+    const todayEntry = currentMonthData[checkDay - 1];
+    const poidsIcon = document.getElementById('check-poids-container');
+    const poidsText = document.getElementById('check-poids-text');
+    if (poidsIcon && poidsText) {
+        if (todayEntry && todayEntry.poids > 0) {
+            poidsIcon.innerHTML = '✅';
+            poidsIcon.classList.replace('bg-gray-50', 'bg-green-100');
+            poidsText.innerText = "Complété";
+            poidsText.classList.replace('text-gray-300', 'text-green-500');
+        } else {
+            poidsIcon.innerHTML = '⚖️';
+            poidsIcon.classList.replace('bg-green-100', 'bg-gray-50');
+            poidsText.innerText = "À remplir";
+            poidsText.classList.replace('text-green-500', 'text-gray-300');
+        }
+    }
+}
+
+
 		
     </script>
 </body>
