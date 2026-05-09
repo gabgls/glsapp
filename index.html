@@ -400,16 +400,22 @@ window.saveToCloud = async function() {
         const TRAINING_KEY = 'fitTrainingDataV2';
 		const EXERCICES_DB = {
 			// Pecs
-    "Developpe Couche": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
-    "Developpe Incline": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
-	"Developpe Décliné": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+    "Developpe Couche Barre": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+    "Developpe Incline Barre": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+	"Developpe Décliné Barre": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+	"Developpe Couche haltères": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+    "Developpe Incline haltères": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+	"Developpe Décliné haltères": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
 	"Dips buste penché": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
+	"Machine à dips buste penché": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
 	"Chest press horizontal": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
 	"Chest press décliné": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
 	"Chest press incliné": { main: "Pectoraux", secondary: ["Triceps", "Épaules"] },
 	"Ecarté poulie haute": { main: "Pectoraux", secondary: ["Épaules"] },
 	"Ecarté poulie basse": { main: "Pectoraux", secondary: ["Épaules"] },
 	"Ecarté poulie milieu": { main: "Pectoraux", secondary: ["Épaules"] },
+	"Ecarté haltères sur banc": { main: "Pectoraux", secondary: ["Épaules"] },
+	"Ecarté haltères sur banc incliné": { main: "Pectoraux", secondary: ["Épaules"] },
 	
 	// Dos
     "Tractions pronation": { main: "Dos", secondary: ["Biceps"] },
@@ -438,6 +444,7 @@ window.saveToCloud = async function() {
 	"Elévations frontales poulie": { main: "Épaules", secondary: [] },
 	"Elévations postérieur sur machine": { main: "Épaules", secondary: [] },
 	"Elévations postérieur haltères": { main: "Épaules", secondary: [] },
+	"Elévations postérieur haltères sur banc incliné": { main: "Épaules", secondary: [] },
 	"Elévations postérieur poulie": { main: "Épaules", secondary: [] },
 	
 	// Quads
@@ -471,6 +478,10 @@ window.saveToCloud = async function() {
 	"Mollets sur step à la smith": { main: "Mollets", secondary: [] },
 	"Mollets uni avec haltère": { main: "Mollets", secondary: [] },
 	"Mollets debout à la machine": { main: "Mollets", secondary: [] },
+	
+	// Avant-bras
+	"Flexion avant-bras à la barre": { main: "Avant-bras", secondary: [] },
+	"Extension avant-bras à la barre": { main: "Avant-bras", secondary: [] },
 	
 	// Biceps
 	"Tractions supination": { main: "Biceps", secondary: ["Dos"] },
