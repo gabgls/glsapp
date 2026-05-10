@@ -122,33 +122,44 @@ window.loadFromCloud = async function(isAuto = false) {
         if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // On récupère la valeur locale AVANT de l'écraser
+            // On récupère la valeur locale AVANT de l'écraser pour savoir s'il faut rafraîchir
             const oldSport = localStorage.getItem('fitTrainingDataV2');
 
-            // Conversion sécurisée des données Firebase vers LocalStorage
+            // 1. Suivi (Poids du corps, etc.)
             if(data.suivi) {
                 const suiviStr = typeof data.suivi === 'string' ? data.suivi : JSON.stringify(data.suivi);
                 localStorage.setItem('fitAppDataV7', suiviStr);
             }
+            
+            // 2. Sport (Tes séances d'entraînement)
             if(data.sport) {
                 const sportStr = typeof data.sport === 'string' ? data.sport : JSON.stringify(data.sport);
                 localStorage.setItem('fitTrainingDataV2', sportStr);
             }
+            
+            // 3. History (Tes performances passées)
             if(data.history) {
                 const historyStr = typeof data.history === 'string' ? data.history : JSON.stringify(data.history);
                 localStorage.setItem('fitProgressionHistoryV1', historyStr);
             }
-            
-            console.log("✅ Données récupérées du Cloud");
 
-            // Correction du bug oldSport : on vérifie si on vient de migrer des données vides
+            // 4. --- AJOUT DES NOTES (CONSIGNES) ---
+            if(data.notes) {
+                const notesStr = typeof data.notes === 'string' ? data.notes : JSON.stringify(data.notes);
+                localStorage.setItem('fitAppNotesV7', notesStr);
+                console.log("📝 Notes de coaching récupérées");
+            }
+            
+            console.log("✅ Toutes les données ont été récupérées du Cloud");
+
+            // Si c'est la première fois qu'on récupère des données sur cet appareil
             if (!oldSport && data.sport) {
-                console.log("Premier chargement détecté : Rafraîchissement...");
+                console.log("Migration cloud réussie : Rafraîchissement de l'interface...");
                 location.reload(); 
                 return;
             }
 
-            // Mise à jour de l'affichage
+            // Mise à jour de l'affichage sans recharger la page
             if (typeof displayData === "function") displayData();
             if (typeof displayTrainings === "function") displayTrainings();
             
@@ -254,43 +265,54 @@ window.saveToCloud = async function() {
         <section id="accueil" class="page active space-y-6">
 		
 		<div class="space-y-3">
-    
-    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between overflow-hidden relative">
-        <div class="relative z-10">
-            <h3 class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Série en cours</h3>
-            <div class="flex items-end gap-1.5">
-                <span id="streak-count" class="text-4xl font-black text-gray-900 leading-none">0</span>
-                <span class="text-sm font-bold text-gray-500 pb-1">jours</span>
+        <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between overflow-hidden relative">
+            <div class="relative z-10">
+                <h3 class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Série en cours</h3>
+                <div class="flex items-end gap-1.5">
+                    <span id="streak-count" class="text-4xl font-black text-gray-900 leading-none">0</span>
+                    <span class="text-sm font-bold text-gray-500 pb-1">jours</span>
+                </div>
+                <p id="streak-consigne" class="text-[9px] text-gray-400 mt-2 font-medium">Remplis poids + calories pour l'allumer !</p>
             </div>
-            <p id="streak-consigne" class="text-[9px] text-gray-400 mt-2 font-medium">Remplis poids + calories pour l'allumer !</p>
-        </div>
-        
-        <div id="streak-fire-container" class="text-6xl opacity-20 grayscale transition-all duration-1000 scale-90 relative">
-            🔥
-            <div class="absolute inset-0 bg-orange-400 rounded-full blur-2xl opacity-0 transition-opacity duration-1000" id="fire-glow"></div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-3">
-        <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
-            <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Statut Pesée</h3>
-            <div id="check-poids-container" class="w-12 h-12 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center text-xl transition-all duration-500">⚖️</div>
-            <p id="check-poids-text" class="text-[9px] font-black uppercase mt-2 text-gray-300 tracking-wider">À remplir</p>
+            <div id="streak-fire-container" class="text-6xl opacity-20 grayscale transition-all duration-1000 scale-90 relative">
+                🔥
+                <div class="absolute inset-0 bg-orange-400 rounded-full blur-2xl opacity-0 transition-opacity duration-1000" id="fire-glow"></div>
+            </div>
         </div>
 
-        <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
-            <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Objectif Hebdo</h3>
-            <div class="relative w-12 h-12 mx-auto flex items-center justify-center">
-                <svg class="w-full h-full transform -rotate-90">
-                    <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" class="text-gray-100" />
-                    <circle id="weekly-progress-bar" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" stroke-dasharray="125.6" stroke-dashoffset="125.6" class="text-indigo-600 transition-all duration-1000" />
-                </svg>
-                <span id="weekly-count" class="absolute text-[10px] font-black text-indigo-600">0/4</span>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+                <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Statut Pesée</h3>
+                <div id="check-poids-container" class="w-12 h-12 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center text-xl transition-all duration-500">⚖️</div>
+                <p id="check-poids-text" class="text-[9px] font-black uppercase mt-2 text-gray-300 tracking-wider">À remplir</p>
             </div>
-            <p class="text-[9px] font-black uppercase mt-2 text-gray-400 tracking-wider">Séances faites</p>
+
+            <div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+                <h3 class="text-[8px] font-black uppercase text-gray-400 mb-2">Objectif Hebdo</h3>
+                <div class="relative w-12 h-12 mx-auto flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" class="text-gray-100" />
+                        <circle id="weekly-progress-bar" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" stroke-dasharray="125.6" stroke-dashoffset="125.6" class="text-indigo-600 transition-all duration-1000" />
+                    </svg>
+                    <span id="weekly-count" class="absolute text-[10px] font-black text-indigo-600">0/4</span>
+                </div>
+                <p class="text-[9px] font-black uppercase mt-2 text-gray-400 tracking-wider">Séances faites</p>
+            </div>
+        </div>
+
+        <div id="next-workout-container" onclick="goToTraining()" class="bg-indigo-600 p-5 rounded-3xl shadow-lg shadow-indigo-100 flex items-center justify-between overflow-hidden relative active:scale-[0.98] transition-transform cursor-pointer">
+            <div class="absolute -right-2 -bottom-2 text-5xl opacity-20 rotate-12">💪</div>
+            
+            <div class="relative z-10">
+                <h3 class="text-[9px] font-black uppercase text-indigo-200 tracking-widest mb-1">Prochaine étape</h3>
+                <p id="next-workout-name" class="text-white font-black text-lg leading-tight uppercase">Chargement...</p>
+                <div class="flex items-center gap-1 mt-1">
+                    <span class="text-[9px] font-bold text-indigo-100 uppercase tracking-tighter">Commencer la séance</span>
+                    <span class="text-indigo-200 text-xs">→</span>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
 <div class="h-px bg-gray-100 w-full mb-6"></div> ```
 		
@@ -1222,112 +1244,185 @@ function addExoManual(tIdx) {
     }, 2000); // Attend 2 secondes après la fin de la saisie
 }
 		function startTraining(idx) {
-    const t = JSON.parse(localStorage.getItem(TRAINING_KEY))[idx];
+    const TRAINING_KEY = 'fitTrainingDataV2'; 
+    const trainings = JSON.parse(localStorage.getItem(TRAINING_KEY)) || [];
+    const t = trainings[idx];
     const allNotes = JSON.parse(localStorage.getItem('fitAppNotesV7')) || {};
     
+    if (!t) return;
+
+    const muscleColors = {
+        'Pectoraux': 'bg-blue-500',
+        'Dos': 'bg-indigo-500',
+        'Épaules': 'bg-purple-500',
+        'Quadriceps': 'bg-orange-500',
+        'Ischios': 'bg-orange-700',
+        'Fessiers': 'bg-pink-500',
+        'Adducteurs': 'bg-emerald-400',
+        'Mollets': 'bg-amber-600',
+        'Biceps': 'bg-red-400',
+        'Triceps': 'bg-red-600',
+        'Abdos': 'bg-emerald-600',
+        'Avant-bras': 'bg-stone-500'
+    };
+
+    const normalize = (str) => {
+        return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+    };
+
+    // On prépare une copie propre de la DB
+    const cleanDB = {};
+    Object.keys(EXERCICES_DB).forEach(key => {
+        cleanDB[normalize(key)] = EXERCICES_DB[key];
+    });
+
     let entrainementHtml = `
+        <div class="sticky top-0 z-50 bg-white/90 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-100 mb-6">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[8px] font-black uppercase text-gray-400 tracking-widest">Progression</span>
+                <span id="progression-text" class="text-[10px] font-black text-indigo-600">0%</span>
+            </div>
+            <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                <div id="progression-bar" class="bg-indigo-600 h-full w-0 transition-all duration-500 ease-out"></div>
+            </div>
+        </div>
         <button onclick="displayTrainings()" class="text-indigo-600 font-black text-[10px] uppercase mb-4 flex items-center">
-            <span class="mr-1 text-xs">←</span> Annuler la séance
+            <span class="mr-1 text-xs">←</span> Annuler
         </button>
-        <h2 class="font-black uppercase text-center mb-6 text-indigo-600 text-sm">${t.name}</h2>
+        <h2 class="font-black uppercase text-center mb-8 text-indigo-900 text-sm tracking-tight">${t.name || t.nom}</h2>
     `;
 
-    entrainementHtml += `
-        <div class="space-y-5">${t.exercises.map((ex, exIdx) => {
-            const noteEx = allNotes[ex.name] || "";
-            
-            // Sécurité : si ex.reps ou ex.sets n'existent pas dans ton stockage, on met une valeur par défaut
-            const displayReps = ex.reps || "10-12"; 
-            const displaySets = ex.sets || "3";
+    entrainementHtml += `<div class="space-y-6">`;
 
-            // LOGIQUE VISUELLE SUPERSET
-            const hasLinkToNext = ex.superset === true;
-            const isLinkedFromPrev = exIdx > 0 && t.exercises[exIdx - 1].superset === true;
-            const partOfSuperset = hasLinkToNext || isLinkedFromPrev;
-            
-            return `
-            <div id="sets-container-${exIdx}" class="bg-white p-4 rounded-3xl border ${partOfSuperset ? 'border-orange-200 shadow-orange-50' : 'border-gray-100 shadow-sm'} relative">
+    t.exercises.forEach((ex, exIdx) => {
+        // RÉCUPÉRATION DU NOM (Gère ex.name ou ex.nom)
+        const currentExName = ex.name || ex.nom || "Sans nom";
+        const cleanExName = normalize(currentExName);
+        const exoData = cleanDB[cleanExName];
+        
+        // DÉTERMINATION DU MUSCLE
+        const muscleGroup = exoData ? exoData.main : "NOM INCONNU";
+        const badgeColor = exoData ? (muscleColors[exoData.main] || 'bg-gray-400') : 'bg-red-500';
+        
+        const noteEx = allNotes[currentExName] || "";
+        const displayReps = ex.reps || "10-12"; 
+        const displaySets = ex.sets || "3";
+        const lastPerfDisplay = ex.lastPerf || '---';
+        const hasLinkToNext = ex.superset === true;
+        const isLinkedFromPrev = exIdx > 0 && t.exercises[exIdx - 1].superset === true;
+        const partOfSuperset = hasLinkToNext || isLinkedFromPrev;
+        
+        entrainementHtml += `
+            <div id="sets-container-${exIdx}" class="bg-white p-5 rounded-[2.5rem] border ${partOfSuperset ? 'border-orange-200 shadow-lg shadow-orange-50' : 'border-gray-100 shadow-sm'} relative">
                 
-                ${partOfSuperset ? `
-                    <span class="absolute -top-2 left-6 bg-orange-500 text-white text-[7px] px-2 py-0.5 rounded-full font-black uppercase shadow-sm">
-                        Superset
-                    </span>
-                ` : ''}
+                ${partOfSuperset ? `<span class="absolute -top-2 left-8 bg-orange-500 text-white text-[7px] px-3 py-1 rounded-full font-black uppercase shadow-sm tracking-widest">Superset</span>` : ''}
                 
-                <div class="flex justify-between items-center mb-1 text-[10px] font-black uppercase">
-                    <span class="${partOfSuperset ? 'text-orange-600' : 'text-indigo-900'}">${ex.name}</span>
-                    <span class="text-orange-500 font-bold">HISTO: ${ex.lastPerf || '---'}</span>
-                </div>
-
-                <div class="flex items-center gap-2 mb-3 bg-emerald-50/80 p-2 rounded-xl border border-emerald-100">
-                    <div class="flex-1 text-[9px] text-emerald-800 font-black uppercase tracking-wider">
-                        🎯 Objectif : <span class="text-emerald-600">${displaySets} séries</span> x <span class="text-emerald-600">${displayReps} reps</span>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 min-w-[8px] min-h-[8px] rounded-full ${badgeColor}"></div>
+                            <span class="text-[8px] font-black ${exoData ? 'text-gray-400' : 'text-red-500'} uppercase tracking-widest">
+                                ${muscleGroup}
+                            </span>
+                        </div>
+                        <h3 class="text-[13px] font-black uppercase leading-tight ${partOfSuperset ? 'text-orange-600' : 'text-indigo-950'}">
+                            ${currentExName}
+                        </h3>
+                    </div>
+                    <div class="bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-2xl flex flex-col items-end">
+                        <span class="text-[6px] font-black text-orange-400 uppercase italic">Histo</span>
+                        <span class="text-[9px] font-black text-orange-600 italic whitespace-nowrap">${lastPerfDisplay}</span>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 mb-3 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50">
-                    <div class="flex-1 text-[9px] text-indigo-900 italic leading-tight" id="note-display-${exIdx}">
-                        ${noteEx ? `<b>Note:</b> ${noteEx}` : `<span class="text-gray-400">Aucune consigne...</span>`}
+                <div class="flex items-center gap-3 mb-3 bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <div class="flex-1 text-[9px] text-emerald-900 font-bold uppercase tracking-wide">
+                        🎯 Objectif : <span class="text-emerald-600 font-black">${displaySets} séries x ${displayReps}</span>
                     </div>
-                    <button onclick="editExerciseNote('${ex.name}', ${exIdx})" class="text-[12px] opacity-60 hover:opacity-100">📝</button>
-                </div>
-				
-				<div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-xl mb-4">
-				    <div class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Repos préconisé</div>
-					<button onclick="startTimer('${ex.rest}')" class="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-lg shadow-sm active:scale-95 transition-transform">
-							⏱️ ${ex.rest || '1:30'}
-					</button>
-				</div>
-
-                <div class="grid grid-cols-5 gap-2 mb-1 px-1">
-                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Set</div>
-                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Charge</div>
-                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">Reps</div>
-                    <div class="text-[7px] font-black text-gray-300 uppercase text-center">RIR</div>
-                    <div></div>
                 </div>
 
-                <div class="space-y-2" id="exercise-rows-${exIdx}">
-                    ${Array.from({length: parseInt(displaySets)}).map((_, s) => `
+                <div class="flex items-center gap-2 mb-4 bg-indigo-50/30 p-2.5 rounded-2xl border border-indigo-100/30">
+                    <div class="flex-1 text-[9px] text-indigo-900/80 italic leading-snug" id="note-display-${exIdx}">
+                        ${noteEx ? `<b>Note:</b> ${noteEx}` : `<span class="text-gray-400 font-normal italic">Pas de consigne...</span>`}
+                    </div>
+                    <button onclick="editExerciseNote('${currentExName.replace(/'/g, "\\'")}', ${exIdx})" class="p-2 bg-white rounded-xl shadow-sm text-[10px]">📝</button>
+                </div>
+                
+                <div class="flex justify-between items-center bg-gray-50/80 px-4 py-2.5 rounded-2xl mb-5">
+                    <div class="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Récupération</div>
+                    <button onclick="startTimer('${ex.rest || '1:30'}')" class="bg-indigo-600 text-white text-[10px] font-black px-4 py-1.5 rounded-xl shadow-md flex items-center gap-2 active:scale-95 transition-transform">
+                            ⏱️ ${ex.rest || '1:30'}
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-5 gap-2 mb-2 px-1 text-[7px] font-black text-gray-300 uppercase text-center">
+                    <div>Set</div><div>Kg</div><div>Reps</div><div>RIR</div><div></div>
+                </div>
+
+                <div class="space-y-2.5" id="exercise-rows-${exIdx}">
+                    ${Array.from({length: parseInt(displaySets) || 0}).map((_, s) => `
                         <div class="grid grid-cols-5 gap-2 items-center set-row-${exIdx}">
-                            <div class="text-center font-black text-indigo-600 text-xs">#${s+1}</div>
-                            <input class="p-input bg-gray-50 p-2 rounded-lg text-xs font-bold text-center outline-none focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all" type="number" placeholder="kg" inputmode="decimal">
-                            <input class="r-input bg-gray-50 p-2 rounded-lg text-xs font-bold text-center outline-none focus:bg-white focus:ring-1 focus:ring-indigo-200 transition-all" type="number" placeholder="reps" inputmode="numeric">
-                            <select class="rir-input bg-gray-50 p-2 rounded-lg text-[10px] font-black text-center outline-none appearance-none">
-                                <option value="-">-</option>
-                                <option value="0">0</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
+                            <div class="text-center font-black text-indigo-600 text-[11px] bg-indigo-50 h-8 flex items-center justify-center rounded-lg">#${s+1}</div>
+                            <input class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="kg" inputmode="decimal">
+                            <input class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="reps" inputmode="numeric">
+                            <select class="rir-input h-8 w-full bg-gray-50 rounded-lg text-[10px] font-black text-center outline-none appearance-none border border-transparent">
+                                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
                             </select>
-                            <button onclick="this.parentElement.remove()" class="text-red-300 text-xs font-bold hover:text-red-500">✕</button>
+                            <button onclick="this.parentElement.remove()" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
                         </div>
                     `).join('')}
                 </div>
 
-                <button onclick="addSetRow(${exIdx})" class="w-full mt-4 py-2 border-2 border-dashed border-gray-100 rounded-xl text-gray-400 text-[8px] font-black uppercase hover:bg-gray-50 transition-all">
-                    + AJOUTER UNE SÉRIE
-                </button>
+                <button onclick="addSetRow(${exIdx})" class="w-full mt-5 py-3 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-[8px] font-black uppercase hover:bg-gray-50 transition-all tracking-widest">+ Ajouter une série</button>
             </div>
+            ${hasLinkToNext ? `<div class="flex justify-center -my-6 relative z-10"><div class="bg-orange-500 text-white text-[8px] font-black px-5 py-1.5 rounded-full shadow-lg uppercase flex items-center gap-2 border-4 border-white animate-pulse"><span>Enchaîner</span><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></div></div>` : ''}
+        `;
+    });
 
-            ${hasLinkToNext ? `
-                <div class="flex justify-center -my-5 relative z-10">
-                    <div class="bg-orange-500 text-white text-[8px] font-black px-4 py-1 rounded-full shadow-md uppercase flex items-center gap-2 border-2 border-white">
-                        <span>Enchaîner</span>
-                        <svg class="w-3 h-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                        </svg>
-                    </div>
-                </div>
-            ` : ''}
-        `}).join('')}</div>
-        
-        <button onclick="finishTraining(${idx})" class="w-full bg-emerald-600 text-white font-black py-5 rounded-[30px] mt-10 uppercase tracking-widest text-xs mb-20 shadow-xl active:scale-95 transition-all">
-            ✅ Enregistrer la séance
-        </button>
+    entrainementHtml += `
+        </div>
+        <button onclick="finishTraining(${idx})" class="w-full bg-emerald-600 text-white font-black py-6 rounded-[2.5rem] mt-12 uppercase tracking-[0.2em] text-[10px] mb-24 shadow-xl active:scale-95 transition-all border-b-4 border-emerald-800">Enregistrer la séance</button>
     `;
 
     document.getElementById('entrainement').innerHTML = entrainementHtml;
+}
+
+// --- FONCTION DE MISE À JOUR DE LA BARRE ---
+function updateTrainingProgress(totalExercises) {
+    let completedExercises = 0;
+
+    for (let i = 0; i < totalExercises; i++) {
+        const container = document.getElementById(`exercise-rows-${i}`);
+        if (!container) continue;
+
+        const inputs = container.querySelectorAll('input');
+        let hasData = false;
+        
+        // On considère un exercice "commencé/fait" si au moins un input est rempli
+        inputs.forEach(input => {
+            if (input.value !== "") hasData = true;
+        });
+
+        if (hasData) completedExercises++;
+    }
+
+    const percent = Math.round((completedExercises / totalExercises) * 100);
+    const progressBar = document.getElementById('progression-bar');
+    const progressText = document.getElementById('progression-text');
+
+    if (progressBar && progressText) {
+        progressBar.style.width = percent + "%";
+        progressText.innerText = percent + "%";
+        
+        // Petit effet visuel quand c'est fini
+        if (percent === 100) {
+            progressBar.classList.replace('bg-indigo-600', 'bg-emerald-500');
+            progressText.classList.replace('text-indigo-600', 'text-emerald-500');
+        } else {
+            progressBar.classList.replace('bg-emerald-500', 'bg-indigo-600');
+            progressText.classList.replace('text-emerald-500', 'text-indigo-600');
+        }
+    }
 }
 
 let timerInterval;
@@ -1420,18 +1515,23 @@ async function editExerciseNote(exerciseName, exIdx) {
 }
 
         function addSetRow(exIdx) {
-    const container = document.getElementById(`sets-container-${exIdx}`).querySelector('.space-y-2');
+    // On cible directement l'ID qu'on a défini dans startTraining
+    const container = document.getElementById(`exercise-rows-${exIdx}`);
+    
+    // Sécurité au cas où l'élément n'est pas encore rendu
+    if (!container) return;
+
     const newRowNum = container.children.length + 1;
     
     const rowHtml = `
         <div class="grid grid-cols-5 gap-2 items-center set-row-${exIdx}">
-            <div class="text-center font-bold text-indigo-600 text-xs">#${newRowNum}</div>
-            <input class="p-input bg-gray-50 p-2 rounded-lg text-xs" type="number" placeholder="kg">
-            <input class="r-input bg-gray-50 p-2 rounded-lg text-xs" type="number" placeholder="reps">
-            <select class="rir-input bg-gray-50 p-2 rounded-lg text-[10px] font-bold">
-                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="3">4</option><option value="3">5</option>
+            <div class="text-center font-black text-indigo-600 text-[11px] bg-indigo-50 h-8 flex items-center justify-center rounded-lg">#${newRowNum}</div>
+            <input class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="kg" inputmode="decimal">
+            <input class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="reps" inputmode="numeric">
+            <select class="rir-input h-8 w-full bg-gray-50 rounded-lg text-[10px] font-black text-center outline-none appearance-none border border-transparent">
+                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
             </select>
-            <button onclick="this.parentElement.remove()" class="text-red-300 text-xs font-bold">✕</button>
+            <button onclick="this.parentElement.remove()" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
         </div>`;
     
     container.insertAdjacentHTML('beforeend', rowHtml);
@@ -1439,13 +1539,20 @@ async function editExerciseNote(exerciseName, exIdx) {
         function finishTraining(tIdx) {
     let s = JSON.parse(localStorage.getItem(TRAINING_KEY));
     let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-    const dateNow = new Date().toLocaleDateString('fr-FR'); // Ex: "12/04/2026"
+    const dateNow = new Date().toLocaleDateString('fr-FR');
+    
+    let hasRecordToday = false; // Pour savoir si on déclenche la fête à la fin
 
     s[tIdx].exercises.forEach((ex, exIdx) => {
         const rows = document.querySelectorAll(`.set-row-${exIdx}`);
         let perfs = [];
         let totalVolume = 0;
         let maxWeight = 0;
+
+        // --- LOGIQUE DÉTECTION RECORD ---
+        // On récupère le poids du record précédent stocké dans ex.lastPerf
+        // On extrait le nombre (ex: "60kg x 10" -> 60)
+        const previousRecord = ex.lastPerf ? parseFloat(ex.lastPerf.replace(/[^\d.]/g, '')) : 0;
 
         rows.forEach(row => {
             const p = parseFloat(row.querySelector('.p-input').value);
@@ -1454,16 +1561,21 @@ async function editExerciseNote(exerciseName, exIdx) {
             
             if(p && r) {
                 perfs.push(`${p}kg x ${r} (RIR:${rir})`);
-                totalVolume += (p * r); // Calcul du volume (Poids x Reps)
-                if (p > maxWeight) maxWeight = p; // Record de charge
+                totalVolume += (p * r);
+                if (p > maxWeight) maxWeight = p;
             }
         });
 
         if(perfs.length > 0) {
-            // 1. Mise à jour de l'affichage direct (Histo)
+            // Si le poids max d'aujourd'hui est > au record précédent
+            if (maxWeight > previousRecord && previousRecord > 0) {
+                hasRecordToday = true;
+            }
+
+            // 1. Mise à jour de l'affichage direct
             ex.lastPerf = perfs.join(' | ');
 
-            // 2. Ajout dans l'historique global pour le graphique
+            // 2. Ajout dans l'historique global
             history.push({
                 date: dateNow,
                 exercice: ex.name,
@@ -1474,39 +1586,87 @@ async function editExerciseNote(exerciseName, exIdx) {
         }
     });
 
+    // Sauvegarde
     localStorage.setItem(TRAINING_KEY, JSON.stringify(s));
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     
-	window.saveToCloud();
-    alert("💪 Séance archivée et enregistrée !");
+    if (window.saveToCloud) window.saveToCloud();
+
+    // --- CÉLÉBRATION ---
+    if (hasRecordToday) {
+        triggerCelebration(); // On lance les trophées !
+    } else {
+        // Simple retour visuel si pas de record
+        const snack = document.createElement('div');
+        snack.className = "fixed bottom-20 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-black text-[10px] uppercase shadow-xl z-50 animate-bounce";
+        snack.innerText = "💪 Séance enregistrée !";
+        document.body.appendChild(snack);
+        setTimeout(() => snack.remove(), 3000);
+    }
+
     displayTrainings();
 }
 
-		function savePerformance(exoName, weight, reps) {
+		function savePerformance(exoName, weight, reps, lastPerfStr) {
     let history = JSON.parse(localStorage.getItem('fitProgressionHistoryV1')) || {};
     
+    // --- LOGIQUE RECORD BATU ---
+    if (lastPerfStr && lastPerfStr !== '---') {
+        // On extrait le premier nombre du texte "60kg x 10" -> 60
+        const oldWeight = parseFloat(lastPerfStr.replace(/[^\d.]/g, ''));
+        const newWeight = parseFloat(weight);
+
+        if (newWeight > oldWeight) {
+            triggerCelebration(); // On lance la fête !
+        }
+    }
+
     if (!history[exoName]) {
         history[exoName] = [];
     }
     
-    // On ajoute la nouvelle perf avec la date du jour
     history[exoName].push({
         date: new Date().toLocaleDateString(),
         weight: weight,
-        reps: reps
+        reps: reps,
+        timestamp: Date.now()
     });
     
-    // 1. Sauvegarde locale
     localStorage.setItem('fitProgressionHistoryV1', JSON.stringify(history));
 
-    // 2. Synchronisation Cloud Automatique (Firebase)
-    // On met un petit délai pour ne pas surcharger pendant une séance
     setTimeout(() => {
         if (window.saveToCloud) {
             window.saveToCloud();
             console.log("📈 Historique de force synchronisé !");
         }
     }, 1000);
+    
+    updateNextWorkout();
+}
+
+function triggerCelebration() {
+    const container = document.createElement('div');
+    container.className = "fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none";
+    container.innerHTML = `
+        <div class="flex flex-col items-center animate-bounce">
+            <div class="text-7xl bg-white p-6 rounded-full shadow-2xl border-4 border-yellow-400">🏆</div>
+            <div class="mt-4 bg-yellow-400 text-white font-black px-8 py-3 rounded-full uppercase tracking-tighter shadow-lg text-sm">
+                Nouveau Record Personnel !
+            </div>
+        </div>
+    `;
+    document.body.appendChild(container);
+
+    // Flash léger
+    const flash = document.createElement('div');
+    flash.className = "fixed inset-0 bg-yellow-400/20 z-[9998] pointer-events-none transition-opacity duration-1000";
+    document.body.appendChild(flash);
+
+    setTimeout(() => {
+        container.classList.add('opacity-0', 'transition-opacity');
+        flash.classList.add('opacity-0');
+        setTimeout(() => { container.remove(); flash.remove(); }, 1000);
+    }, 3000);
 }
 
 		function showVolumeAnalysis() {
@@ -1746,6 +1906,7 @@ async function editExerciseNote(exerciseName, exIdx) {
     displayTrainings(); 
 	initYoutubeCarousel();
 	updateDailyDashboard();
+	updateNextWorkout();
 };
 		
 		// --- GRAPHES SPORT ---
@@ -2052,6 +2213,93 @@ function updateDailyDashboard() {
             poidsText.innerText = "À remplir";
             poidsText.classList.replace('text-green-500', 'text-gray-300');
         }
+    }
+}
+
+function updateNextWorkout() {
+    const SPORT_KEY = 'fitTrainingDataV2';
+    const HISTORY_KEY = 'fitProgressionHistoryV1';
+
+    const myTrainings = JSON.parse(localStorage.getItem(SPORT_KEY)) || [];
+    const rawHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || {};
+    
+    const nextNameElem = document.getElementById('next-workout-name');
+    if (!nextNameElem) return;
+
+    if (myTrainings.length === 0) {
+        nextNameElem.innerText = "Aucun programme";
+        return;
+    }
+
+    // 1. Calcul du début de semaine (Lundi 00:00)
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // 2. Transformer l'Objet en Liste pour pouvoir le parcourir
+    let historyList = [];
+    if (Array.isArray(rawHistory)) {
+        historyList = rawHistory; // C'est déjà un tableau
+    } else {
+        // C'est un objet (ex: { "Squat": [...], "Bench": [...] })
+        // On récupère toutes les listes de perfs et on les fusionne
+        Object.values(rawHistory).forEach(exoArray => {
+            if (Array.isArray(exoArray)) {
+                historyList = historyList.concat(exoArray);
+            }
+        });
+    }
+
+    // 3. Comptage des jours de sport uniques cette semaine
+    let uniqueDays = new Set();
+    historyList.forEach(h => {
+        let datePerf;
+        if (h.timestamp) {
+            datePerf = new Date(h.timestamp);
+        } else if (h.date) {
+            const parts = h.date.split('/');
+            if (parts.length === 3) {
+                datePerf = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            }
+        }
+
+        if (datePerf && datePerf >= startOfWeek && datePerf <= now) {
+            uniqueDays.add(datePerf.toLocaleDateString());
+        }
+    });
+
+    // 4. Déterminer la séance suivante
+    const sessionsDone = uniqueDays.size;
+    const nextIndex = sessionsDone % myTrainings.length;
+    const nextWorkout = myTrainings[nextIndex];
+
+    // 5. Mise à jour du texte
+    if (nextWorkout) {
+        nextNameElem.innerText = nextWorkout.nom || nextWorkout.name || "Séance suivante";
+    }
+}
+
+// Fonction pour le raccourci vers l'onglet Sport
+function goToTraining() {
+    // On cherche le bouton dans ta barre de navigation
+    // On essaie de le trouver par son texte ou son icône
+    const navButtons = document.querySelectorAll('nav button, nav a, .footer-menu button');
+    
+    let found = false;
+    navButtons.forEach(btn => {
+        if (btn.innerText.toLowerCase().includes('sport') || btn.innerHTML.includes('fa-dumbbell')) {
+            btn.click();
+            found = true;
+        }
+    });
+
+    if (!found) {
+        // Si on n'a pas trouvé, on essaie d'afficher la section directement
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('sport').classList.add('active');
     }
 }
 
