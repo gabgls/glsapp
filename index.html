@@ -1035,12 +1035,10 @@ async function editMensurations(k) {
     document.getElementById('entrainement').innerHTML = `
         <div class="flex items-center justify-between mb-6">
             <button onclick="displayTrainings()" class="text-indigo-600 font-black text-xs uppercase">← Retour</button>
-            
             <div onclick="renameTraining(${idx})" class="flex items-center gap-2 cursor-pointer group">
                 <h2 class="font-black uppercase text-sm group-hover:text-indigo-600 transition-colors">${t.name}</h2>
                 <span class="text-[10px] opacity-30">✏️</span>
             </div>
-            
             <button onclick="deleteTraining(${idx})" class="text-red-400 text-xs uppercase font-bold">Suppr.</button>
         </div>
 
@@ -1049,12 +1047,17 @@ async function editMensurations(k) {
                 const isSuperset = ex.superset === true;
                 return `
                 <div class="bg-white p-4 rounded-3xl border ${isSuperset ? 'border-orange-300 ring-2 ring-orange-50 ring-inset' : 'border-gray-100'} relative shadow-sm">
+                    
+                    <div class="absolute top-3 right-10 flex gap-1">
+                        ${i > 0 ? `<button onclick="moveExercise(${idx}, ${i}, 'up')" class="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-lg text-[10px] grayscale hover:grayscale-0">⬆️</button>` : ''}
+                        ${i < t.exercises.length - 1 ? `<button onclick="moveExercise(${idx}, ${i}, 'down')" class="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-lg text-[10px] grayscale hover:grayscale-0">⬇️</button>` : ''}
+                    </div>
+
                     <button onclick="deleteExercise(${idx}, ${i})" class="absolute top-3 right-3 text-gray-300 hover:text-red-400 transition-colors">✕</button>
                     
                     <div class="flex items-center gap-3 mb-3">
                         <p class="font-black text-indigo-900 text-[10px] uppercase">${ex.name}</p>
                         
-                        <!-- BOUTON LIEN SUPERSET -->
                         <button onclick="toggleSuperset(${idx}, ${i})" 
                             class="text-[8px] px-2 py-1 rounded-lg font-black uppercase transition-all 
                             ${isSuperset ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-orange-100'}">
@@ -1085,6 +1088,28 @@ async function editMensurations(k) {
         
         <button onclick="addExercise(${idx})" class="w-full border-2 border-dashed border-indigo-200 text-indigo-400 py-4 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-50 transition-colors">+ Ajouter Exercice</button>
     `;
+}
+
+function moveExercise(trainingIdx, exIdx, direction) {
+    const s = JSON.parse(localStorage.getItem(TRAINING_KEY));
+    const t = s[trainingIdx];
+    const exercises = t.exercises;
+
+    // Calcul de la nouvelle position
+    const newIdx = direction === 'up' ? exIdx - 1 : exIdx + 1;
+
+    // Vérification des limites (ne pas monter le premier ou descendre le dernier)
+    if (newIdx < 0 || newIdx >= exercises.length) return;
+
+    // Échange des places (Destructuring swap)
+    [exercises[exIdx], exercises[newIdx]] = [exercises[newIdx], exercises[exIdx]];
+
+    // Sauvegarde et rafraîchissement
+    localStorage.setItem(TRAINING_KEY, JSON.stringify(s));
+    editTraining(trainingIdx); // On recharge l'interface d'édition
+    
+    // Synchro Cloud optionnelle si tu l'as
+    if (window.saveToCloud) window.saveToCloud();
 }
 
 function toggleSuperset(trainingIdx, exIdx) {
@@ -1256,6 +1281,9 @@ function addExoManual(tIdx) {
     
     if (!t) return;
 
+    // On calcule le nombre total d'exercices pour la barre de progression
+    const totalExoCount = t.exercises.length;
+
     const muscleColors = {
         'Pectoraux': 'bg-blue-500',
         'Dos': 'bg-indigo-500',
@@ -1275,7 +1303,6 @@ function addExoManual(tIdx) {
         return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
     };
 
-    // On prépare une copie propre de la DB
     const cleanDB = {};
     Object.keys(EXERCICES_DB).forEach(key => {
         cleanDB[normalize(key)] = EXERCICES_DB[key];
@@ -1300,12 +1327,10 @@ function addExoManual(tIdx) {
     entrainementHtml += `<div class="space-y-6">`;
 
     t.exercises.forEach((ex, exIdx) => {
-        // RÉCUPÉRATION DU NOM (Gère ex.name ou ex.nom)
         const currentExName = ex.name || ex.nom || "Sans nom";
         const cleanExName = normalize(currentExName);
         const exoData = cleanDB[cleanExName];
         
-        // DÉTERMINATION DU MUSCLE
         const muscleGroup = exoData ? exoData.main : "NOM INCONNU";
         const badgeColor = exoData ? (muscleColors[exoData.main] || 'bg-gray-400') : 'bg-red-500';
         
@@ -1368,12 +1393,12 @@ function addExoManual(tIdx) {
                     ${Array.from({length: parseInt(displaySets) || 0}).map((_, s) => `
                         <div class="grid grid-cols-5 gap-2 items-center set-row-${exIdx}">
                             <div class="text-center font-black text-indigo-600 text-[11px] bg-indigo-50 h-8 flex items-center justify-center rounded-lg">#${s+1}</div>
-                            <input class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="kg" inputmode="decimal">
-                            <input class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="reps" inputmode="numeric">
+                            <input oninput="updateTrainingProgress(${totalExoCount})" class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="kg" inputmode="decimal">
+                            <input oninput="updateTrainingProgress(${totalExoCount})" class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200 transition-all" type="number" placeholder="reps" inputmode="numeric">
                             <select class="rir-input h-8 w-full bg-gray-50 rounded-lg text-[10px] font-black text-center outline-none appearance-none border border-transparent">
                                 <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
                             </select>
-                            <button onclick="this.parentElement.remove()" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
+                            <button onclick="this.parentElement.remove(); updateTrainingProgress(${totalExoCount})" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
                         </div>
                     `).join('')}
                 </div>
@@ -1520,23 +1545,28 @@ async function editExerciseNote(exerciseName, exIdx) {
 }
 
         function addSetRow(exIdx) {
-    // On cible directement l'ID qu'on a défini dans startTraining
     const container = document.getElementById(`exercise-rows-${exIdx}`);
-    
-    // Sécurité au cas où l'élément n'est pas encore rendu
     if (!container) return;
+
+    // On récupère le nombre total d'exercices présents dans la séance 
+    // pour que la fonction de progression ait la bonne référence.
+    const totalExoCount = document.querySelectorAll('[id^="exercise-rows-"]').length;
 
     const newRowNum = container.children.length + 1;
     
     const rowHtml = `
         <div class="grid grid-cols-5 gap-2 items-center set-row-${exIdx}">
             <div class="text-center font-black text-indigo-600 text-[11px] bg-indigo-50 h-8 flex items-center justify-center rounded-lg">#${newRowNum}</div>
-            <input class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="kg" inputmode="decimal">
-            <input class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="reps" inputmode="numeric">
+            
+            <input oninput="updateTrainingProgress(${totalExoCount})" class="p-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="kg" inputmode="decimal">
+            
+            <input oninput="updateTrainingProgress(${totalExoCount})" class="r-input h-8 bg-gray-50 rounded-lg text-[11px] font-bold text-center outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-200" type="number" placeholder="reps" inputmode="numeric">
+            
             <select class="rir-input h-8 w-full bg-gray-50 rounded-lg text-[10px] font-black text-center outline-none appearance-none border border-transparent">
-                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="-">RIR</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
             </select>
-            <button onclick="this.parentElement.remove()" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
+            
+            <button onclick="this.parentElement.remove(); updateTrainingProgress(${totalExoCount})" class="h-8 flex items-center justify-center text-red-200 hover:text-red-500">✕</button>
         </div>`;
     
     container.insertAdjacentHTML('beforeend', rowHtml);
