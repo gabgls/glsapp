@@ -1627,9 +1627,11 @@ async function editExerciseNote(exerciseName, exIdx) {
 }
         function finishTraining(tIdx) {
     let s = JSON.parse(localStorage.getItem(TRAINING_KEY));
-    let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-    const dateNow = new Date().toLocaleDateString('fr-FR');
+    // On force l'initialisation à un objet {} pour correspondre à ton format de graphiques
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY));
+    if (!history || Array.isArray(history)) history = {};
     
+    const dateNow = new Date().toLocaleDateString('fr-FR');
     let hasRecordToday = false; // Pour savoir si on déclenche la fête à la fin
 
     s[tIdx].exercises.forEach((ex, exIdx) => {
@@ -1637,10 +1639,12 @@ async function editExerciseNote(exerciseName, exIdx) {
         let perfs = [];
         let totalVolume = 0;
         let maxWeight = 0;
+        
+        // Variables pour le calcul du RIR Moyen
+        let totalRir = 0;
+        let rirCount = 0;
 
         // --- LOGIQUE DÉTECTION RECORD ---
-        // On récupère le poids du record précédent stocké dans ex.lastPerf
-        // On extrait le nombre (ex: "60kg x 10" -> 60)
         const previousRecord = ex.lastPerf ? parseFloat(ex.lastPerf.replace(/[^\d.]/g, '')) : 0;
 
         rows.forEach(row => {
@@ -1652,11 +1656,16 @@ async function editExerciseNote(exerciseName, exIdx) {
                 perfs.push(`${p}kg x ${r} (RIR:${rir})`);
                 totalVolume += (p * r);
                 if (p > maxWeight) maxWeight = p;
+
+                // Calcul du RIR si la valeur est un nombre (on exclut les "-" ou les vides)
+                if (rir !== undefined && rir !== null && rir !== "-") {
+                    totalRir += parseFloat(rir);
+                    rirCount++;
+                }
             }
         });
 
         if(perfs.length > 0) {
-            // Si le poids max d'aujourd'hui est > au record précédent
             if (maxWeight > previousRecord && previousRecord > 0) {
                 hasRecordToday = true;
             }
@@ -1664,12 +1673,18 @@ async function editExerciseNote(exerciseName, exIdx) {
             // 1. Mise à jour de l'affichage direct
             ex.lastPerf = perfs.join(' | ');
 
-            // 2. Ajout dans l'historique global
-            history.push({
+            // 2. Initialisation de la clé de l'exercice si elle n'existe pas encore dans l'objet
+            if (!history[ex.name]) {
+                history[ex.name] = [];
+            }
+
+            // 3. Ajout dans la liste de cet exercice spécifique
+            history[ex.name].push({
                 date: dateNow,
-                exercice: ex.name,
+                exercice: ex.name, // Reste compatible au cas où
                 volume: totalVolume,
                 max: maxWeight,
+                rir: rirCount > 0 ? parseFloat((totalRir / rirCount).toFixed(1)) : 0, // Enregistre le RIR moyen
                 timestamp: Date.now()
             });
         }
@@ -2109,6 +2124,7 @@ function openStats() {
 		
 		let myProgChart = null;
 		let myPrChart = null;
+		let rirChart = null;
 
 function updateProgressionChart() {
     const exoName = document.getElementById('select-exo-chart').value;
@@ -2133,14 +2149,20 @@ function updateProgressionChart() {
     const volumeValues = dataExo.map(h => h.volume || 0);
 
     // --- DONNÉES PR (POIDS MAX) ---
-    // On utilise h.max car c'est ce que tu as mis dans finishTraining
     const prValues = dataExo.map(h => parseFloat(h.max || h.weight || 0));
+
+    // --- DONNÉES RIR MOYEN ---
+    // Si h.rir n'existe pas encore dans tes anciennes séances, on met 0 par défaut
+    const rirValues = dataExo.map(h => parseFloat(h.rir !== undefined ? h.rir : 0));
 
     // Rendu du graph Volume (Indigo)
     renderSingleChart('progressionChart', 'Volume Total (kg)', volumeValues, labels, '#4f46e5', 'myProgChart');
     
     // Rendu du graph PR (Orange)
     renderSingleChart('prChart', 'Meilleur PR (Poids Max)', prValues, labels, '#f97316', 'myPrChart');
+
+    // Rendu du graph RIR (Émeraude)
+    renderSingleChart('rirChart', 'Intensité : RIR Moyen', rirValues, labels, '#10b981', 'myRirChart');
 }
 
 // Fonction générique pour créer les charts
@@ -2150,6 +2172,7 @@ function renderSingleChart(canvasId, label, data, labels, color, globalVarName) 
     // Destruction de l'instance précédente pour éviter les bugs au survol
     if (globalVarName === 'myProgChart' && window.myProgChart) window.myProgChart.destroy();
     if (globalVarName === 'myPrChart' && window.myPrChart) window.myPrChart.destroy();
+    if (globalVarName === 'myRirChart' && window.myRirChart) window.myRirChart.destroy();
 
     const chart = new Chart(ctx, {
         type: 'line',
@@ -2171,7 +2194,12 @@ function renderSingleChart(canvasId, label, data, labels, color, globalVarName) 
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    // Si c'est le graphique RIR, on force une échelle adaptée (ex: 0 à 5)
+                    suggestedMax: label.includes('RIR') ? 4 : undefined
+                },
                 x: { grid: { display: false } }
             },
             plugins: {
@@ -2179,19 +2207,25 @@ function renderSingleChart(canvasId, label, data, labels, color, globalVarName) 
                 tooltip: {
                     backgroundColor: '#1f2937',
                     callbacks: {
-                        label: (context) => ` ${context.parsed.y} ${label.includes('PR') ? 'kg' : ''}`
+                        label: (context) => {
+                            // Adapte l'unité de l'infobulle selon le graphique
+                            if (label.includes('PR')) return ` ${context.parsed.y} kg`;
+                            if (label.includes('RIR')) return ` RIR ${context.parsed.y}`;
+                            return ` ${context.parsed.y} kg`;
+                        }
                     }
                 }
             }
         }
     });
 
-    // On assigne à la variable globale
+    // On assigne à la variable globale pour pouvoir la détruire au prochain changement
     if (globalVarName === 'myProgChart') window.myProgChart = chart;
     if (globalVarName === 'myPrChart') window.myPrChart = chart;
+    if (globalVarName === 'myRirChart') window.myRirChart = chart;
 }
 
-		function fillChartExoList() {
+function fillChartExoList() {
     // On récupère l'historique (qui est maintenant un objet { "Exo1": [...], "Exo2": [...] })
     const history = JSON.parse(localStorage.getItem('fitProgressionHistoryV1')) || {};
     
@@ -2242,10 +2276,17 @@ function renderSingleChart(canvasId, label, data, labels, color, globalVarName) 
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm">
+        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm mb-6">
             <p class="text-[9px] font-black text-orange-400 uppercase mb-2 ml-2">🔥 Meilleur PR (Poids Max)</p>
             <div style="height: 250px;">
                 <canvas id="prChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm">
+            <p class="text-[9px] font-black text-emerald-500 uppercase mb-2 ml-2">🎯 Intensité : RIR Moyen (Proximité Échec)</p>
+            <div style="height: 250px;">
+                <canvas id="rirChart"></canvas>
             </div>
         </div>
 
