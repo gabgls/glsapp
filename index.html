@@ -1179,8 +1179,19 @@ function toggleSuperset(trainingIdx, exIdx) {
     
     if (newName && newName.trim() !== "" && newName !== oldName) {
         s[idx].name = newName.trim();
+        
+        // 1. Sauvegarde locale
         localStorage.setItem(TRAINING_KEY, JSON.stringify(s));
-        editTraining(idx); // On rafraîchit pour voir le nouveau nom
+        
+        // 2. Synchronisation Cloud Automatique (Firebase)
+        setTimeout(() => {
+            if (window.saveToCloud) {
+                window.saveToCloud();
+            }
+        }, 500);
+
+        // 3. Rafraîchissement de l'interface
+        editTraining(idx); 
     }
 }
         function addExercise(tIdx) {
