@@ -251,19 +251,37 @@ window.saveToCloud = async function() {
     </div>
 </div>
 
-    <div id="stats-modal">
-        <div class="bg-white w-full max-w-md rounded-3xl p-6 max-h-[90vh] overflow-y-auto relative shadow-2xl space-y-6">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h2 class="text-lg font-black text-gray-800 uppercase">📊 Analyses</h2>
-                <button onclick="closeStats()" class="text-gray-400 text-xl font-bold p-2">✕</button>
+    <div id="stats-modal" class="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 max-h-[90vh] overflow-y-auto relative shadow-2xl space-y-6">
+        <div class="flex justify-between items-center border-b pb-3">
+            <h2 class="text-lg font-black text-gray-800 uppercase">📊 Analyses</h2>
+            <button onclick="closeStats()" class="text-gray-400 text-xl font-bold p-2">✕</button>
+        </div>
+        <div class="space-y-6">
+            <div class="bg-gray-50 p-3 rounded-2xl border">
+                <p class="text-[10px] font-black text-indigo-600 uppercase mb-2 text-center">Poids Moyen (kg)</p>
+                <canvas id="weightChart"></canvas>
             </div>
-            <div class="space-y-6">
-                <div class="bg-gray-50 p-3 rounded-2xl border"><p class="text-[10px] font-black text-indigo-600 uppercase mb-2 text-center">Poids Moyen (kg)</p><canvas id="weightChart"></canvas></div>
-                <div class="bg-gray-50 p-3 rounded-2xl border"><p class="text-[10px] font-black text-pink-600 uppercase mb-2 text-center">Mensurations Clés (Moyennes cm)</p><canvas id="measureChart"></canvas></div>
-                <div id="stats-evolution-list" class="space-y-2 pt-4 border-t"></div>
+            
+            <div class="bg-gray-50 p-3 rounded-2xl border">
+                <p class="text-[10px] font-black text-purple-600 uppercase mb-2 text-center">Carrure (Épaules / Poitrine cm)</p>
+                <canvas id="measureChart"></canvas>
             </div>
+            
+            <div class="bg-gray-50 p-3 rounded-2xl border">
+                <p class="text-[10px] font-black text-pink-600 uppercase mb-2 text-center">Sangle Abdominale (Taille / Hanches cm)</p>
+                <canvas id="waistChart"></canvas>
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-2xl border">
+                <p class="text-[10px] font-black text-emerald-600 uppercase mb-2 text-center">Bras & Jambes (Moyennes cm)</p>
+                <canvas id="limbsChart"></canvas>
+            </div>
+            
+            <div id="stats-evolution-list" class="space-y-2 pt-4 border-t"></div>
         </div>
     </div>
+</div>
 
     <main class="p-4 flex-1 pb-24">
         
@@ -662,7 +680,7 @@ window.saveToCloud = async function() {
 	"Obliques à la poulie": { main: "Abdos", secondary: [] }
 };
 		const HISTORY_KEY = 'fitProgressionHistoryV1';
-        let weightChart = null, measureChart = null;
+        let weightChart = null, measureChart = null, waistChart = null, limbsChart = null;
 
         function showPage(pageId, title, btn) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1745,6 +1763,13 @@ function triggerCelebration() {
     });
 
     sessions.forEach(session => {
+        // --- FILTRE SÉANCE BONUS ---
+        // On récupère et nettoie le nom de la séance actuelle
+        const sessionName = normalize(session.name || session.nom || "");
+        
+        // Si le nom contient le mot "bonus", on ignore complètement cette séance
+        if (sessionName.includes('bonus')) return;
+
         session.exercises.forEach(ex => {
             const sets = parseInt(ex.sets) || 0;
             const cleanExName = normalize(ex.name);
@@ -1932,20 +1957,120 @@ function triggerCelebration() {
 
 
         // --- GRAPHES POIDS ET MENSU---
-        function openStats() {
-            document.getElementById('stats-modal').style.display = 'flex';
-            const s = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
-            let wL = [], wD = [], mL = [], tD = [], bD = [], cD = [], hL = "";
-            monthNames.forEach((n, i) => {
-                const j = s.journal[i] || []; if(j.length > 0) { const a = (j.reduce((v, e) => v + e.poids, 0)/j.length).toFixed(1); wL.push(n.substring(0,3)); wD.push(a); hL += `<div class="bg-gray-50 p-2 rounded-lg border text-[9px] flex justify-between"><b>${n}</b> <span>${a}kg</span></div>`; }
-                const m = s.mesures[i]; if(m && m.taille > 0) { mL.push(n.substring(0,3)); tD.push(m.taille); bD.push(((m.brasD+m.brasG)/2).toFixed(1)); cD.push(((m.cuisseD+m.cuisseG)/2).toFixed(1)); }
-            });
-            document.getElementById('stats-evolution-list').innerHTML = hL || "Pas de données";
-            if(weightChart) weightChart.destroy();
-            weightChart = new Chart(document.getElementById('weightChart'), { type: 'line', data: { labels: wL, datasets: [{ data: wD, borderColor: '#4f46e5', tension: 0.3 }] }, options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false, ticks:{font:{size:8}}}}}});
-            if(measureChart) measureChart.destroy();
-            measureChart = new Chart(document.getElementById('measureChart'), { type: 'line', data: { labels: mL, datasets: [{ label: 'Taille', data: tD, borderColor: '#ec4899' }, { label: 'Bras (M)', data: bD, borderColor: '#4f46e5' }, { label: 'Cuisse (M)', data: cD, borderColor: '#10b981' }] }, options: { plugins:{legend:{labels:{size:8}}}, scales:{y:{beginAtZero:false, ticks:{font:{size:8}}}}}});
+        
+
+function openStats() {
+    document.getElementById('stats-modal').style.display = 'flex';
+    
+    // On utilise la bonne clé STORAGE_KEY (assure-toi qu'elle est bien définie globalement)
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { journal: {}, mesures: {} };
+    
+    let wL = [], wD = []; // Poids
+    let mL = [];          // Labels Mensurations
+    
+    // Tableaux de données pour les graphiques
+    let epD = [], poD = []; // Épaules, Poitrine
+    let taD = [], haD = []; // Taille, Hanches
+    let brD = [], avD = [], cuD = [], moD = []; // Bras, Av-bras, Cuisses, Mollets
+    
+    let hL = "";
+
+    monthNames.forEach((n, i) => {
+        // 1. Gestion du Poids Moyen
+        const j = s.journal[i] || [];
+        if(j.length > 0) {
+            const a = (j.reduce((v, e) => v + e.poids, 0)/j.length).toFixed(1);
+            wL.push(n.substring(0,3));
+            wD.push(a);
+            hL += `<div class="bg-gray-50 p-2 rounded-lg border text-[9px] flex justify-between"><b>${n}</b> <span>${a}kg</span></div>`;
         }
+        
+        // 2. Gestion des Mensurations (Correction des clés exactes de ton HTML/DB)
+        const m = s.mesures[i];
+        if(m && (m.taille > 0 || m.epaules > 0 || m.brasD > 0)) {
+            mL.push(n.substring(0,3));
+            
+            // Haut du corps
+            epD.push(m.epaules || 0);
+            poD.push(m.poitrine || 0);
+            
+            // Sangle abdominale
+            taD.push(m.taille || 0);
+            haD.push(m.hanches || 0);
+            
+            // Membres (Moyennes Gauche/Droite avec tes clés exactes en minuscules)
+            brD.push((( (parseFloat(m.brasD) || 0) + (parseFloat(m.brasG) || 0) ) / 2).toFixed(1));
+            avD.push((( (parseFloat(m.avbrasD) || 0) + (parseFloat(m.avbrasG) || 0) ) / 2).toFixed(1));
+            cuD.push((( (parseFloat(m.cuisseD) || 0) + (parseFloat(m.cuisseG) || 0) ) / 2).toFixed(1));
+            moD.push((( (parseFloat(m.molletD) || 0) + (parseFloat(m.molletG) || 0) ) / 2).toFixed(1));
+        }
+    });
+
+    document.getElementById('stats-evolution-list').innerHTML = hL || "Pas de données";
+
+    // Options globales pour la lisibilité mobile
+    const chartOptions = {
+        plugins: { legend: { labels: { size: 8, boxWidth: 10 } } },
+        scales: { 
+            y: { beginAtZero: false, ticks: { font: { size: 8 } } }, 
+            x: { ticks: { font: { size: 8 } } } 
+        }
+    };
+
+    // --- RENDU DES GRAPHIQUES ---
+
+    // Graphe Poids
+    if(weightChart) weightChart.destroy();
+    weightChart = new Chart(document.getElementById('weightChart'), {
+        type: 'line',
+        data: { labels: wL, datasets: [{ data: wD, borderColor: '#4f46e5', tension: 0.3 }] },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false, ticks: { font: { size: 8 } } } } }
+    });
+
+    // Graphe 1 : Haut du corps (On remplace l'ancien measureChart global)
+    if(measureChart) measureChart.destroy();
+    measureChart = new Chart(document.getElementById('measureChart'), {
+        type: 'line',
+        data: {
+            labels: mL,
+            datasets: [
+                { label: 'Épaules', data: epD, borderColor: '#8b5cf6', tension: 0.2 },
+                { label: 'Poitrine', data: poD, borderColor: '#3b82f6', tension: 0.2 }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // Graphe 2 : Sangle Abdominale
+    if(waistChart) waistChart.destroy();
+    waistChart = new Chart(document.getElementById('waistChart'), {
+        type: 'line',
+        data: {
+            labels: mL,
+            datasets: [
+                { label: 'Taille', data: taD, borderColor: '#ec4899', tension: 0.2 },
+                { label: 'Hanches', data: haD, borderColor: '#f43f5e', tension: 0.2 }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // Graphe 3 : Membres (Bras / Jambes)
+    if(limbsChart) limbsChart.destroy();
+    limbsChart = new Chart(document.getElementById('limbsChart'), {
+        type: 'line',
+        data: {
+            labels: mL,
+            datasets: [
+                { label: 'Bras', data: brD, borderColor: '#4f46e5', tension: 0.2 },
+                { label: 'Av-Bras', data: avD, borderColor: '#6b7280', tension: 0.2 },
+                { label: 'Cuisses', data: cuD, borderColor: '#10b981', tension: 0.2 },
+                { label: 'Mollets', data: moD, borderColor: '#f59e0b', tension: 0.2 }
+            ]
+        },
+        options: chartOptions
+    });
+}
         function closeStats() { document.getElementById('stats-modal').style.display = 'none'; }
         
       window.onload = () => {
